@@ -1,9 +1,7 @@
 package main
 
-import "fmt"
+import "GOtus/chessboard"
 
 func main() {
-	fmt.Print("Hello World!")
-
-	fmt.Print("How are you?")
+	chessboard.PrintChessboard()
 }
