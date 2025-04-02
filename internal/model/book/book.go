@@ -1,14 +1,16 @@
 package book
 
 type Book struct {
-	id   int
-	Name string
+	id     int
+	Name   string
+	Author string
 }
 
-func NewBook(id int, name string) *Book {
+func NewBook(id int, name string, author string) *Book {
 	return &Book{
-		id:   id,
-		Name: name,
+		id:     id,
+		Name:   name,
+		Author: author,
 	}
 }
 

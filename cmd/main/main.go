@@ -13,8 +13,8 @@ import (
 
 func main() {
 	// Создание книги
-	b := book.NewBook(1, "1984")
-	fmt.Println("Создана книга:", b.Name, "ID:", b.GetID())
+	b := book.NewBook(1, "Капитанская дочка", "А. С. Пушкин")
+	fmt.Println("Создана книга:", b.Name, "ID:", b.GetID(), "Автор произведения:", b.Author)
 
 	// Создание пользователя
 	u := user.NewUser(1, "Иван Иванов", "ivan@example.com")
