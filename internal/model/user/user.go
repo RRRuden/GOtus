@@ -1,5 +1,9 @@
 package user
 
+import (
+	"fmt"
+)
+
 type User struct {
 	id    int
 	Name  string
@@ -16,4 +20,8 @@ func NewUser(id int, name, email string) *User {
 
 func (u *User) GetID() int {
 	return u.id
+}
+
+func (u User) String() string {
+	return fmt.Sprintf("[User] ID: %d, Name: %s, Email: %s", u.GetID(), u.Name, u.Email)
 }

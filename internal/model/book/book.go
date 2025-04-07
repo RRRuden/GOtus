@@ -2,6 +2,7 @@ package book
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 )
 
@@ -39,4 +40,8 @@ func (b *Book) GetISBN() string {
 func isValidISBN(isbn string) bool {
 	match, _ := regexp.MatchString(`^(97[89]-\d{1,5}-\d{1,7}-\d{1,7}-\d)$`, isbn)
 	return match
+}
+
+func (b Book) String() string {
+	return fmt.Sprintf("[Book] ISBN: %s, Name: %s, Author: %s, Year: %d", b.GetISBN(), b.Name, b.Author, b.Year)
 }

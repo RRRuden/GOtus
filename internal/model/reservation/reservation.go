@@ -1,6 +1,7 @@
 package reservation
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -26,4 +27,9 @@ func NewReservation(id, bookInstanceID, userID, statusID int, startDate, endDate
 
 func (r *Reservation) GetID() int {
 	return r.id
+}
+
+func (r Reservation) String() string {
+	return fmt.Sprintf("[Reservation] ID: %d, BookInstanceID: %d, UserID: %d, StartDate: %s, EndDate: %s, StatusID: %d",
+		r.GetID(), r.BookInstanceID, r.UserID, r.StartDate.Format("2006-01-02"), r.EndDate.Format("2006-01-02"), r.ReservationStatusID)
 }
