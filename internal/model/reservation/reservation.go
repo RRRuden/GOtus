@@ -6,17 +6,17 @@ import (
 
 type Reservation struct {
 	id                  int
-	BookID              int
+	BookInstanceID      int
 	UserID              int
 	StartDate           time.Time
 	EndDate             time.Time
 	ReservationStatusID int
 }
 
-func NewReservation(id, bookID, userID, statusID int, startDate, endDate time.Time) *Reservation {
+func NewReservation(id, bookInstanceID, userID, statusID int, startDate, endDate time.Time) *Reservation {
 	return &Reservation{
 		id:                  id,
-		BookID:              bookID,
+		BookInstanceID:      bookInstanceID,
 		UserID:              userID,
 		StartDate:           startDate,
 		EndDate:             endDate,
