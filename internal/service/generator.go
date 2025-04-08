@@ -19,8 +19,8 @@ func GenerateAndStoreData() {
 	u := user.NewUser(1, "Иван Иванов", "ivan@example.com")
 	r := reservation.NewReservation(1, bi.GetID(), u.GetID(), 1, start, end)
 
-	repository.Store(*b)
-	repository.Store(*bi)
-	repository.Store(*u)
-	repository.Store(*r)
+	repository.Store(b)
+	repository.Store(bi)
+	repository.Store(u)
+	repository.Store(r)
 }
