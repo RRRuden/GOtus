@@ -1,26 +1,31 @@
-// internal/service/generator.go
 package service
 
 import (
+	"fmt"
 	"time"
 
 	"gotus/internal/model/book"
 	"gotus/internal/model/reservation"
 	"gotus/internal/model/user"
-	"gotus/internal/repository"
 )
 
-func GenerateAndStoreData() {
-	start := time.Now()
-	end := start.AddDate(0, 0, 14)
+func GenerateAndStoreData(dataCh chan<- fmt.Stringer) {
+	for i := 0; i < 5; i++ {
+		start := time.Now()
+		end := start.AddDate(0, 0, 14)
 
-	b, _ := book.NewBook("978-3-16-148410-0", "Капитанская дочка", "А. С. Пушкин", 1502)
-	bi := book.NewBookInstance(1, b.GetISBN())
-	u := user.NewUser(1, "Иван Иванов", "ivan@example.com")
-	r := reservation.NewReservation(1, bi.GetID(), u.GetID(), 1, start, end)
+		isbn := fmt.Sprintf("978-3-16-148410-%d", i)
+		b, _ := book.NewBook(isbn, "Капитанская дочка", "А. С. Пушкин", 1502)
+		bi := book.NewBookInstance(i, b.GetISBN())
+		u := user.NewUser(i, "Иван Иванов", "ivan@example.com")
+		r := reservation.NewReservation(i, bi.GetID(), u.GetID(), i, start, end)
 
-	repository.Store(b)
-	repository.Store(bi)
-	repository.Store(u)
-	repository.Store(r)
+		dataCh <- b
+		dataCh <- bi
+		dataCh <- u
+		dataCh <- r
+
+		// Записываем данные раз в 3 секунды
+		time.Sleep(3 * time.Second)
+	}
 }
