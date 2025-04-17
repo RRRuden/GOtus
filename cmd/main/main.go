@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	service.GenerateAndStoreData()
+	service.RunService()
 }
