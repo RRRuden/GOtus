@@ -19,7 +19,7 @@ func LogUpdatesWorker(ctx context.Context) {
 		case <-ctx.Done():
 			log.Println("[StorageLogger] Graceful shutdown")
 			return
-		default:
+		case <-ticker.C:
 			// Книги
 			if books, count := repository.GetBooks(); count != lastBookCount {
 				newBooks := books[lastBookCount:]
