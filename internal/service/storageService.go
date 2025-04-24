@@ -1,21 +1,32 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"gotus/internal/repository"
+	"log"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 )
 
 func RunService() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	var wg sync.WaitGroup
 
 	dataCh := make(chan fmt.Stringer)
+
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
 	wg.Add(3)
 
 	go func() {
 		defer wg.Done()
-		GenerateAndStoreData(dataCh)
+		GenerateAndStoreData(ctx, dataCh)
 		close(dataCh)
 	}()
 
@@ -28,8 +39,15 @@ func RunService() {
 
 	go func() {
 		defer wg.Done()
-		LogUpdatesWorker()
+		LogUpdatesWorker(ctx)
 	}()
 
-	wg.Wait()
+	// Ожидаем сигнал завершения
+	<-sigs
+	log.Println("Получен сигнал завершения. Завершаем выполнение...")
+
+	cancel() // Отправка сигнала контексту
+
+	wg.Wait() // Ожидание завершения всех горутин
+	log.Println("Все горутины завершены. Приложение остановлено.")
 }
