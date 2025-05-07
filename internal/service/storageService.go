@@ -18,11 +18,12 @@ func RunService() {
 	var wg sync.WaitGroup
 
 	dataCh := make(chan fmt.Stringer)
-
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
 	wg.Add(3)
+
+	repository.LoadAllFromCSV()
 
 	go func() {
 		defer wg.Done()
