@@ -8,17 +8,17 @@ import (
 
 type Book struct {
 	isbn   string
-	Name   string
+	Title  string
 	Author string
 	Year   int
 }
 
-func NewBook(isbn, name string, author string, year int) (*Book, error) {
+func NewBook(isbn, title string, author string, year int) (*Book, error) {
 	b := &Book{}
 	if err := b.setISBN(isbn); err != nil {
 		return nil, err
 	}
-	b.Name = name
+	b.Title = title
 	b.Author = author
 	b.Year = year
 
@@ -43,5 +43,5 @@ func isValidISBN(isbn string) bool {
 }
 
 func (b Book) String() string {
-	return fmt.Sprintf("[Book] ISBN: %s, Name: %s, Author: %s, Year: %d", b.GetISBN(), b.Name, b.Author, b.Year)
+	return fmt.Sprintf("[Book] ISBN: %s, Title: %s, Author: %s, Year: %d", b.GetISBN(), b.Title, b.Author, b.Year)
 }
