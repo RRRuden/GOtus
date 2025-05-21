@@ -4,33 +4,42 @@ import (
 	"encoding/csv"
 	"gotus/internal/model/reservation"
 	"os"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"time"
 )
 
-const reservationCSVPath = "./data/reservations.csv"
-
-var (
+type ReservationRepository struct {
 	reservations      []*reservation.Reservation
+	dataDir           string
+	filename          string
 	reservationsMutex sync.Mutex
-)
-
-func StoreReservation(r *reservation.Reservation) {
-	reservationsMutex.Lock()
-	defer reservationsMutex.Unlock()
-	reservations = append(reservations, r)
-	saveReservationToCSV(r)
 }
 
-func GetReservations() ([]*reservation.Reservation, int) {
-	reservationsMutex.Lock()
-	defer reservationsMutex.Unlock()
-	return reservations, len(reservations)
+func NewReservationRepository(dataDir string) *ReservationRepository {
+	return &ReservationRepository{
+		reservations: []*reservation.Reservation{},
+		dataDir:      dataDir,
+		filename:     "reservations.csv",
+	}
 }
 
-func LoadReservationsFromCSV() {
-	file, err := os.Open(reservationCSVPath)
+func (repo *ReservationRepository) StoreReservation(r *reservation.Reservation) {
+	repo.reservationsMutex.Lock()
+	defer repo.reservationsMutex.Unlock()
+	repo.reservations = append(repo.reservations, r)
+	repo.saveReservationToCSV(r)
+}
+
+func (repo *ReservationRepository) GetReservations() ([]*reservation.Reservation, int) {
+	repo.reservationsMutex.Lock()
+	defer repo.reservationsMutex.Unlock()
+	return repo.reservations, len(repo.reservations)
+}
+
+func (repo *ReservationRepository) LoadReservationsFromCSV() {
+	file, err := os.Open(filepath.Join(repo.dataDir, repo.filename))
 	if err != nil {
 		return
 	}
@@ -39,8 +48,8 @@ func LoadReservationsFromCSV() {
 	r := csv.NewReader(file)
 	records, _ := r.ReadAll()
 
-	reservationsMutex.Lock()
-	defer reservationsMutex.Unlock()
+	repo.reservationsMutex.Lock()
+	defer repo.reservationsMutex.Unlock()
 
 	for _, rec := range records {
 		id, _ := strconv.Atoi(rec[0])
@@ -51,12 +60,12 @@ func LoadReservationsFromCSV() {
 		end, _ := time.Parse(time.RFC3339, rec[5])
 
 		res := reservation.NewReservation(id, bid, uid, sid, start, end)
-		reservations = append(reservations, res)
+		repo.reservations = append(repo.reservations, res)
 	}
 }
 
-func saveReservationToCSV(r *reservation.Reservation) {
-	file, _ := os.OpenFile(reservationCSVPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+func (repo *ReservationRepository) saveReservationToCSV(r *reservation.Reservation) {
+	file, _ := os.OpenFile(filepath.Join(repo.dataDir, repo.filename), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	defer file.Close()
 
 	w := csv.NewWriter(file)

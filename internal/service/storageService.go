@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"gotus/internal/config"
 	"gotus/internal/repository"
 	"log"
 	"os"
@@ -23,7 +24,11 @@ func RunService() {
 
 	wg.Add(3)
 
-	repository.LoadAllFromCSV()
+	config := config.LoadConfig("./config/config.yaml")
+
+	storage := repository.NewStorage(config.StoragePath)
+
+	storage.LoadAllFromCSV()
 
 	go func() {
 		defer wg.Done()
@@ -34,13 +39,13 @@ func RunService() {
 	go func() {
 		defer wg.Done()
 		for item := range dataCh {
-			repository.Store(item)
+			storage.Store(item)
 		}
 	}()
 
 	go func() {
 		defer wg.Done()
-		LogUpdatesWorker(ctx)
+		LogUpdatesWorker(ctx, storage)
 	}()
 
 	// Ожидаем сигнал завершения

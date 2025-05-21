@@ -4,54 +4,63 @@ import (
 	"encoding/csv"
 	"gotus/internal/model/book"
 	"os"
+	"path/filepath"
 	"strconv"
 	"sync"
 )
 
-const bookInstanceCSVPath = "./data/bookInstances.csv"
-
-var (
+type BookInstanceRepository struct {
 	bookInstances      []*book.BookInstance
+	dataDir            string
+	filename           string
 	bookInstancesMutex sync.Mutex
-)
-
-func StoreBookInstance(bi *book.BookInstance) {
-	bookInstancesMutex.Lock()
-	defer bookInstancesMutex.Unlock()
-
-	bookInstances = append(bookInstances, bi)
-	saveBookInstanceToCSV(bi)
 }
 
-func GetBookInstances() ([]*book.BookInstance, int) {
-	bookInstancesMutex.Lock()
-	defer bookInstancesMutex.Unlock()
-
-	return bookInstances, len(bookInstances)
+func NewBookInstanceRepository(dataDir string) *BookInstanceRepository {
+	return &BookInstanceRepository{
+		bookInstances: []*book.BookInstance{},
+		dataDir:       dataDir,
+		filename:      "bookInstances.csv",
+	}
 }
 
-func LoadBookInstancesFromCSV() {
-	file, err := os.Open(bookInstanceCSVPath)
+func (r *BookInstanceRepository) StoreBookInstance(bi *book.BookInstance) {
+	r.bookInstancesMutex.Lock()
+	defer r.bookInstancesMutex.Unlock()
+
+	r.bookInstances = append(r.bookInstances, bi)
+	r.saveBookInstanceToCSV(bi)
+}
+
+func (r *BookInstanceRepository) GetBookInstances() ([]*book.BookInstance, int) {
+	r.bookInstancesMutex.Lock()
+	defer r.bookInstancesMutex.Unlock()
+
+	return r.bookInstances, len(r.bookInstances)
+}
+
+func (r *BookInstanceRepository) LoadBookInstancesFromCSV() {
+	file, err := os.Open(filepath.Join(r.dataDir, r.filename))
 	if err != nil {
 		return
 	}
 	defer file.Close()
 
-	r := csv.NewReader(file)
-	records, _ := r.ReadAll()
+	reader := csv.NewReader(file)
+	records, _ := reader.ReadAll()
 
-	bookInstancesMutex.Lock()
-	defer bookInstancesMutex.Unlock()
+	r.bookInstancesMutex.Lock()
+	defer r.bookInstancesMutex.Unlock()
 
 	for _, rec := range records {
 		id, _ := strconv.Atoi(rec[0])
 		bi := book.NewBookInstance(id, rec[1])
-		bookInstances = append(bookInstances, bi)
+		r.bookInstances = append(r.bookInstances, bi)
 	}
 }
 
-func saveBookInstanceToCSV(bi *book.BookInstance) {
-	file, _ := os.OpenFile(bookInstanceCSVPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+func (r *BookInstanceRepository) saveBookInstanceToCSV(bi *book.BookInstance) {
+	file, _ := os.OpenFile(filepath.Join(r.dataDir, r.filename), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	defer file.Close()
 
 	w := csv.NewWriter(file)
