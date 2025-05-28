@@ -57,6 +57,59 @@ func (r *BookRepository) LoadBooksFromCSV() {
 	}
 }
 
+func (r *BookRepository) UpdateBookByISBN(isbn string, updatedBook *book.Book) bool {
+	r.booksMutex.Lock()
+	defer r.booksMutex.Unlock()
+
+	found := false
+	for i, b := range r.books {
+		if b.GetISBN() == isbn {
+			r.books[i] = updatedBook
+			found = true
+			break
+		}
+	}
+
+	if found {
+		r.saveAllToCSV()
+	}
+
+	return found
+}
+
+func (r *BookRepository) DeleteBookByISBN(isbn string) bool {
+	r.booksMutex.Lock()
+	defer r.booksMutex.Unlock()
+
+	found := false
+	var updated []*book.Book
+	for _, b := range r.books {
+		if b.GetISBN() != isbn {
+			updated = append(updated, b)
+		} else {
+			found = true
+		}
+	}
+
+	if found {
+		r.books = updated
+		r.saveAllToCSV()
+	}
+
+	return found
+}
+
+func (r *BookRepository) FindBookByISBN(isbn string) (*book.Book, bool) {
+	r.booksMutex.Lock()
+	defer r.booksMutex.Unlock()
+	for _, b := range r.books {
+		if b.GetISBN() == isbn {
+			return b, true
+		}
+	}
+	return nil, false
+}
+
 func (r *BookRepository) saveBookToCSV(b *book.Book) {
 	file, _ := os.OpenFile(filepath.Join(r.dataDir, r.filename), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	defer file.Close()
@@ -65,4 +118,16 @@ func (r *BookRepository) saveBookToCSV(b *book.Book) {
 	defer w.Flush()
 
 	_ = w.Write([]string{b.GetISBN(), b.Title, b.Author, strconv.Itoa(b.Year)})
+}
+
+func (r *BookRepository) saveAllToCSV() {
+	file, _ := os.Create(filepath.Join(r.dataDir, r.filename))
+	defer file.Close()
+
+	w := csv.NewWriter(file)
+	defer w.Flush()
+
+	for _, b := range r.books {
+		_ = w.Write([]string{b.GetISBN(), b.Title, b.Author, strconv.Itoa(b.Year)})
+	}
 }
