@@ -99,7 +99,7 @@ func (r *UserRepository) FindUserByEmail(email string) (*user.User, bool) {
 	return nil, false
 }
 
-func (r *UserRepository) DeleteReservationById(id int) bool {
+func (r *UserRepository) DeleteUserById(id int) bool {
 	r.usersMutex.Lock()
 	defer r.usersMutex.Unlock()
 

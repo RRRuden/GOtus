@@ -8,20 +8,18 @@ import (
 )
 
 type Storage struct {
-	dataDir                string
-	BookRepository         BookRepository
-	BookInstanceRepository BookInstanceRepository
-	UserRepository         UserRepository
-	ReservationRepository  ReservationRepository
+	BookRepository         *BookRepository
+	BookInstanceRepository *BookInstanceRepository
+	UserRepository         *UserRepository
+	ReservationRepository  *ReservationRepository
 }
 
-func NewStorage(dataDir string) *Storage {
+func NewStorage(bookRepo *BookRepository, bookInstanceRepo *BookInstanceRepository, userRepo *UserRepository, resRepo *ReservationRepository) *Storage {
 	return &Storage{
-		dataDir:                dataDir,
-		BookRepository:         *NewBookRepository(dataDir),
-		BookInstanceRepository: *NewBookInstanceRepository(dataDir),
-		UserRepository:         *NewUserRepository(dataDir),
-		ReservationRepository:  *NewReservationRepository(dataDir),
+		BookRepository:         bookRepo,
+		BookInstanceRepository: bookInstanceRepo,
+		UserRepository:         userRepo,
+		ReservationRepository:  resRepo,
 	}
 }
 
