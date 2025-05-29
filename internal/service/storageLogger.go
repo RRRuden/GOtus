@@ -8,7 +8,7 @@ import (
 	"gotus/internal/repository"
 )
 
-func LogUpdatesWorker(ctx context.Context) {
+func LogUpdatesWorker(ctx context.Context, s *repository.Storage) {
 	var lastBookCount, lastBookInstanceCount, lastUserCount, lastReservationCount int
 
 	ticker := time.NewTicker(200 * time.Millisecond)
@@ -21,7 +21,7 @@ func LogUpdatesWorker(ctx context.Context) {
 			return
 		case <-ticker.C:
 			// Книги
-			if books, count := repository.GetBooks(); count != lastBookCount {
+			if books, count := s.BookRepository.GetBooks(); count != lastBookCount {
 				newBooks := books[lastBookCount:]
 				for _, b := range newBooks {
 					log.Println("[Book]", b.String())
@@ -30,7 +30,7 @@ func LogUpdatesWorker(ctx context.Context) {
 			}
 
 			// Экземпляры книг
-			if bookInstances, count := repository.GetBookInstances(); count != lastBookInstanceCount {
+			if bookInstances, count := s.BookInstanceRepository.GetBookInstances(); count != lastBookInstanceCount {
 				newBookInstances := bookInstances[lastBookInstanceCount:]
 				for _, bi := range newBookInstances {
 					log.Println("[BookInstance]", bi.String())
@@ -39,7 +39,7 @@ func LogUpdatesWorker(ctx context.Context) {
 			}
 
 			// Пользователи
-			if users, count := repository.GetUsers(); count != lastUserCount {
+			if users, count := s.UserRepository.GetUsers(); count != lastUserCount {
 				newUsers := users[lastUserCount:]
 				for _, u := range newUsers {
 					log.Println("[User]", u.String())
@@ -48,7 +48,7 @@ func LogUpdatesWorker(ctx context.Context) {
 			}
 
 			// Бронирования
-			if reservations, count := repository.GetReservations(); count != lastReservationCount {
+			if reservations, count := s.ReservationRepository.GetReservations(); count != lastReservationCount {
 				newReservations := reservations[lastReservationCount:]
 				for _, r := range newReservations {
 					log.Println("[Reservation]", r.String())
