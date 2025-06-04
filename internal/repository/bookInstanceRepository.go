@@ -90,6 +90,16 @@ func (r *BookInstanceRepository) FindBookInstanceById(id int) (*book.BookInstanc
 	return nil, false
 }
 
+func (r *BookInstanceRepository) GetBookInstancesByISBN(isbn string) ([]*book.BookInstance, int) {
+	var result []*book.BookInstance
+	for _, instance := range r.bookInstances {
+		if instance.ISBN == isbn {
+			result = append(result, instance)
+		}
+	}
+	return result, len(r.bookInstances)
+}
+
 func (r *BookInstanceRepository) DeleteBookInstanceById(id int) bool {
 	r.bookInstancesMutex.Lock()
 	defer r.bookInstancesMutex.Unlock()

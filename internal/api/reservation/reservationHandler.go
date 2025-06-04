@@ -14,15 +14,35 @@ type ReservationHandler struct {
 	Repo *repository.ReservationRepository
 }
 
+type CreateReservationRequest struct {
+	ID             int    `json:"id"`
+	BookInstanceID int    `json:"book_instance_id"`
+	UserID         int    `json:"user_id"`
+	StatusID       int    `json:"status_id"`
+	StartDate      string `json:"start_date"`
+	EndDate        string `json:"end_date"`
+}
+
+type UpdateReservationRequest struct {
+	BookInstanceID int    `json:"book_instance_id"`
+	UserID         int    `json:"user_id"`
+	StatusID       int    `json:"status_id"`
+	StartDate      string `json:"start_date"`
+	EndDate        string `json:"end_date"`
+}
+
+// CreateReservation godoc
+// @Summary      Создать новую бронь
+// @Description  Добавляет новую запись бронирования книги
+// @Tags         reservation
+// @Accept       json
+// @Produce      json
+// @Param        reservation body CreateReservationRequest true "Данные брони"
+// @Success      201
+// @Failure      400 {string} string "invalid request"
+// @Router       /api/reservation [post]
 func (h *ReservationHandler) CreateReservation(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		ID             int    `json:"id"`
-		BookInstanceID int    `json:"book_instance_id"`
-		UserID         int    `json:"user_id"`
-		StatusID       int    `json:"status_id"`
-		StartDate      string `json:"start_date"`
-		EndDate        string `json:"end_date"`
-	}
+	var req CreateReservationRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request", http.StatusBadRequest)
@@ -37,6 +57,13 @@ func (h *ReservationHandler) CreateReservation(w http.ResponseWriter, r *http.Re
 	w.WriteHeader(http.StatusCreated)
 }
 
+// GetAllReservations godoc
+// @Summary      Получить список всех броней
+// @Description  Возвращает все записи бронирования
+// @Tags         reservation
+// @Produce      json
+// @Success      200 {array} reservation.Reservation
+// @Router       /api/reservations [get]
 func (h *ReservationHandler) GetAllReservations(w http.ResponseWriter, r *http.Request) {
 	res, _ := h.Repo.GetReservations()
 	json.NewEncoder(w).Encode(res)
@@ -62,6 +89,15 @@ func (h *ReservationHandler) ReservationByIDHandler(w http.ResponseWriter, r *ht
 	}
 }
 
+// GetReservationByID godoc
+// @Summary      Получить бронь по ID
+// @Description  Возвращает одну запись бронирования по ID
+// @Tags         reservation
+// @Produce      json
+// @Param        id path int true "ID бронирования"
+// @Success      200 {object} reservation.Reservation
+// @Failure      404 {string} string "not found"
+// @Router       /api/reservation/{id} [get]
 func (h *ReservationHandler) GetReservationByID(w http.ResponseWriter, r *http.Request, id int) {
 	res, ok := h.Repo.FindReservationById(id)
 	if !ok {
@@ -71,14 +107,20 @@ func (h *ReservationHandler) GetReservationByID(w http.ResponseWriter, r *http.R
 	json.NewEncoder(w).Encode(res)
 }
 
+// UpdateReservation godoc
+// @Summary      Обновить бронь по ID
+// @Description  Обновляет запись бронирования
+// @Tags         reservation
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "ID бронирования"
+// @Param        reservation body UpdateReservationRequest true "Обновлённые данные брони"
+// @Success      200
+// @Failure      400 {string} string "invalid request"
+// @Failure      404 {string} string "not found"
+// @Router       /api/reservation/{id} [put]
 func (h *ReservationHandler) UpdateReservation(w http.ResponseWriter, r *http.Request, id int) {
-	var req struct {
-		BookInstanceID int    `json:"book_instance_id"`
-		UserID         int    `json:"user_id"`
-		StatusID       int    `json:"status_id"`
-		StartDate      string `json:"start_date"`
-		EndDate        string `json:"end_date"`
-	}
+	var req UpdateReservationRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request", http.StatusBadRequest)
@@ -96,6 +138,14 @@ func (h *ReservationHandler) UpdateReservation(w http.ResponseWriter, r *http.Re
 	w.WriteHeader(http.StatusOK)
 }
 
+// DeleteReservation godoc
+// @Summary      Удалить бронь по ID
+// @Description  Удаляет запись бронирования по ID
+// @Tags         reservation
+// @Param        id path int true "ID бронирования"
+// @Success      200
+// @Failure      404 {string} string "not found"
+// @Router       /api/reservation/{id} [delete]
 func (h *ReservationHandler) DeleteReservation(w http.ResponseWriter, r *http.Request, id int) {
 	if !h.Repo.DeleteReservationById(id) {
 		http.NotFound(w, r)

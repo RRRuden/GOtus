@@ -117,6 +117,31 @@ func (repo *ReservationRepository) DeleteReservationById(id int) bool {
 	return found
 }
 
+func (r *ReservationRepository) HasActiveReservation(bookInstanceID int) bool {
+	for _, res := range r.reservations {
+		if res.BookInstanceID == bookInstanceID {
+			statusID := res.ReservationStatusID
+			if statusID == reservation.StatusBooked || statusID == reservation.StatusExtended {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (r *ReservationRepository) GenerateID() int {
+	if len(r.reservations) == 0 {
+		return 1
+	}
+	maxID := 0
+	for _, res := range r.reservations {
+		if res.GetID() > maxID {
+			maxID = res.GetID()
+		}
+	}
+	return maxID + 1
+}
+
 func (repo *ReservationRepository) saveReservationToCSV(r *reservation.Reservation) {
 	file, _ := os.OpenFile(filepath.Join(repo.dataDir, repo.filename), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	defer file.Close()

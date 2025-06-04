@@ -1,0 +1,683 @@
+definitions:
+  gotus_internal_model_book.Book:
+    properties:
+      author:
+        type: string
+      title:
+        type: string
+      year:
+        type: integer
+    type: object
+  gotus_internal_model_book.BookInstance:
+    properties:
+      isbn:
+        type: string
+    type: object
+  gotus_internal_model_reservation.Reservation:
+    properties:
+      bookInstanceID:
+        type: integer
+      endDate:
+        type: string
+      reservationStatusID:
+        type: integer
+      startDate:
+        type: string
+      userID:
+        type: integer
+    type: object
+  gotus_internal_model_user.User:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+    type: object
+  internal_api_book.CreateBookInstanceRequest:
+    properties:
+      id:
+        type: integer
+      isbn:
+        type: string
+    type: object
+  internal_api_book.CreateBookRequest:
+    properties:
+      author:
+        type: string
+      isbn:
+        type: string
+      title:
+        type: string
+      year:
+        type: integer
+    type: object
+  internal_api_book.UpdateBookInstanceRequest:
+    properties:
+      id:
+        type: integer
+      isbn:
+        type: string
+    type: object
+  internal_api_book.UpdateBookRequest:
+    properties:
+      author:
+        type: string
+      title:
+        type: string
+      year:
+        type: integer
+    type: object
+  internal_api_booking.CreateBookingRequest:
+    properties:
+      isbn:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  internal_api_booking.ExtendBookingRequest:
+    properties:
+      extension_days:
+        type: integer
+    type: object
+  internal_api_reservation.CreateReservationRequest:
+    properties:
+      book_instance_id:
+        type: integer
+      end_date:
+        type: string
+      id:
+        type: integer
+      start_date:
+        type: string
+      status_id:
+        type: integer
+      user_id:
+        type: integer
+    type: object
+  internal_api_reservation.UpdateReservationRequest:
+    properties:
+      book_instance_id:
+        type: integer
+      end_date:
+        type: string
+      start_date:
+        type: string
+      status_id:
+        type: integer
+      user_id:
+        type: integer
+    type: object
+  internal_api_user.CreateUserRequest:
+    properties:
+      email:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  internal_api_user.UpdateUserRequest:
+    properties:
+      email:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: REST API для библиотеки GOtus.
+  title: GOtus API
+  version: "1.0"
+paths:
+  /api/book:
+    post:
+      consumes:
+      - application/json
+      description: Создание новой книги и добавление её в хранилище
+      parameters:
+      - description: Данные книги
+        in: body
+        name: book
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_book.CreateBookRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: invalid request
+          schema:
+            type: string
+      summary: Добавить новую книгу
+      tags:
+      - book
+  /api/book/{isbn}:
+    delete:
+      description: Удаляет книгу из хранилища по заданному ISBN
+      parameters:
+      - description: ISBN книги
+        in: path
+        name: isbn
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+        "404":
+          description: not found
+          schema:
+            type: string
+      summary: Удалить книгу по ISBN
+      tags:
+      - book
+    get:
+      description: Возвращает книгу по заданному ISBN
+      parameters:
+      - description: ISBN книги
+        in: path
+        name: isbn
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/gotus_internal_model_book.Book'
+        "404":
+          description: not found
+          schema:
+            type: string
+      summary: Получить книгу по ISBN
+      tags:
+      - book
+    put:
+      consumes:
+      - application/json
+      description: Обновляет данные книги по заданному ISBN
+      parameters:
+      - description: ISBN книги
+        in: path
+        name: isbn
+        required: true
+        type: string
+      - description: Обновлённые данные книги
+        in: body
+        name: book
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_book.UpdateBookRequest'
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: invalid request
+          schema:
+            type: string
+        "404":
+          description: not found
+          schema:
+            type: string
+      summary: Обновить книгу по ISBN
+      tags:
+      - book
+  /api/booking/cancel/{id}:
+    post:
+      description: Отменяет бронирование по ID
+      parameters:
+      - description: ID бронирования
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Бронирование отменено
+          schema:
+            type: string
+        "400":
+          description: Ошибка запроса
+          schema:
+            type: string
+      summary: Отменить бронирование
+      tags:
+      - booking
+  /api/booking/create:
+    post:
+      consumes:
+      - application/json
+      description: Бронирует доступный экземпляр книги по ISBN для указанного пользователя
+      parameters:
+      - description: Данные для бронирования
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_booking.CreateBookingRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Бронирование успешно создано
+          schema:
+            type: string
+        "400":
+          description: Неверный запрос
+          schema:
+            type: string
+      summary: Создать бронирование книги
+      tags:
+      - booking
+  /api/booking/end/{id}:
+    post:
+      description: Завершает бронирование по ID
+      parameters:
+      - description: ID бронирования
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Бронирование завершено
+          schema:
+            type: string
+        "400":
+          description: Ошибка запроса
+          schema:
+            type: string
+      summary: Завершить бронирование
+      tags:
+      - booking
+  /api/booking/extend/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Продлевает бронирование по ID на заданное количество дней
+      parameters:
+      - description: ID бронирования
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Дни продления
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_booking.ExtendBookingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Бронирование продлено
+          schema:
+            type: string
+        "400":
+          description: Ошибка запроса
+          schema:
+            type: string
+      summary: Продлить бронирование
+      tags:
+      - booking
+  /api/bookinstance:
+    post:
+      consumes:
+      - application/json
+      description: Добавляет новый экземпляр книги по ISBN
+      parameters:
+      - description: Экземпляр книги
+        in: body
+        name: instance
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_book.CreateBookInstanceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: invalid request
+          schema:
+            type: string
+      summary: Создать экземпляр книги
+      tags:
+      - bookinstance
+  /api/bookinstance/{id}:
+    delete:
+      description: Удаляет экземпляр книги по ID
+      parameters:
+      - description: ID экземпляра книги
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+        "404":
+          description: not found
+          schema:
+            type: string
+      summary: Удалить экземпляр книги
+      tags:
+      - bookinstance
+    get:
+      description: Возвращает экземпляр книги по ID
+      parameters:
+      - description: ID экземпляра книги
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/gotus_internal_model_book.BookInstance'
+        "404":
+          description: not found
+          schema:
+            type: string
+      summary: Получить экземпляр книги по ID
+      tags:
+      - bookinstance
+    put:
+      consumes:
+      - application/json
+      description: Обновляет экземпляр книги по ID
+      parameters:
+      - description: ID экземпляра книги
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Новые данные экземпляра
+        in: body
+        name: instance
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_book.UpdateBookInstanceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: invalid request
+          schema:
+            type: string
+        "404":
+          description: not found
+          schema:
+            type: string
+      summary: Обновить экземпляр книги
+      tags:
+      - bookinstance
+  /api/bookinstances:
+    get:
+      description: Возвращает список всех экземпляров книг
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/gotus_internal_model_book.BookInstance'
+            type: array
+      summary: Получить все экземпляры книг
+      tags:
+      - bookinstance
+  /api/books:
+    get:
+      description: Возвращает массив всех книг в системе
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/gotus_internal_model_book.Book'
+            type: array
+      summary: Получить список всех книг
+      tags:
+      - book
+  /api/reservation:
+    post:
+      consumes:
+      - application/json
+      description: Добавляет новую запись бронирования книги
+      parameters:
+      - description: Данные брони
+        in: body
+        name: reservation
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_reservation.CreateReservationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: invalid request
+          schema:
+            type: string
+      summary: Создать новую бронь
+      tags:
+      - reservation
+  /api/reservation/{id}:
+    delete:
+      description: Удаляет запись бронирования по ID
+      parameters:
+      - description: ID бронирования
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+        "404":
+          description: not found
+          schema:
+            type: string
+      summary: Удалить бронь по ID
+      tags:
+      - reservation
+    get:
+      description: Возвращает одну запись бронирования по ID
+      parameters:
+      - description: ID бронирования
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/gotus_internal_model_reservation.Reservation'
+        "404":
+          description: not found
+          schema:
+            type: string
+      summary: Получить бронь по ID
+      tags:
+      - reservation
+    put:
+      consumes:
+      - application/json
+      description: Обновляет запись бронирования
+      parameters:
+      - description: ID бронирования
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Обновлённые данные брони
+        in: body
+        name: reservation
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_reservation.UpdateReservationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: invalid request
+          schema:
+            type: string
+        "404":
+          description: not found
+          schema:
+            type: string
+      summary: Обновить бронь по ID
+      tags:
+      - reservation
+  /api/reservations:
+    get:
+      description: Возвращает все записи бронирования
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/gotus_internal_model_reservation.Reservation'
+            type: array
+      summary: Получить список всех броней
+      tags:
+      - reservation
+  /api/user:
+    post:
+      consumes:
+      - application/json
+      description: Добавляет нового пользователя
+      parameters:
+      - description: Пользователь
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_user.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: invalid request
+          schema:
+            type: string
+      summary: Создать пользователя
+      tags:
+      - user
+  /api/user/{id}:
+    delete:
+      description: Удаляет пользователя по ID
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+        "404":
+          description: not found
+          schema:
+            type: string
+      summary: Удалить пользователя
+      tags:
+      - user
+    get:
+      description: Возвращает пользователя по ID
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/gotus_internal_model_user.User'
+        "404":
+          description: not found
+          schema:
+            type: string
+      summary: Получить пользователя по ID
+      tags:
+      - user
+    put:
+      consumes:
+      - application/json
+      description: Обновляет пользователя по ID
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Новые данные пользователя
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_user.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: invalid request
+          schema:
+            type: string
+        "404":
+          description: not found
+          schema:
+            type: string
+      summary: Обновить пользователя
+      tags:
+      - user
+  /api/users:
+    get:
+      description: Возвращает список всех пользователей
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/gotus_internal_model_user.User'
+            type: array
+      summary: Получить всех пользователей
+      tags:
+      - user
+swagger: "2.0"
