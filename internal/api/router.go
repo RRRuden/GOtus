@@ -1,20 +1,28 @@
 package router
 
 import (
+	_ "gotus/cmd/main/docs"
 	b_handler "gotus/internal/api/book"
+	booking_handler "gotus/internal/api/booking"
 	r_handler "gotus/internal/api/reservation"
 	u_handler "gotus/internal/api/user"
 	"gotus/internal/repository"
+	"gotus/internal/service"
 	"net/http"
+
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 func NewRouter(bookRepo *repository.BookRepository, bookInstanceRepo *repository.BookInstanceRepository, resRepo *repository.ReservationRepository, userRepo *repository.UserRepository) http.Handler {
 	mux := http.NewServeMux()
 
+	bookingService := service.NewBookingService(userRepo, bookRepo, bookInstanceRepo, resRepo)
+
 	bookHandler := &b_handler.BookHandler{Repo: bookRepo}
 	bookInstanceHandler := &b_handler.BookInstanceHandler{Repo: bookInstanceRepo}
 	resHandler := &r_handler.ReservationHandler{Repo: resRepo}
 	userHandler := &u_handler.UserHandler{Repo: userRepo}
+	bookingHandler := &booking_handler.BookingHandler{Service: bookingService}
 
 	// Book Routes
 	mux.HandleFunc("/api/book", method(bookHandler.CreateBook, "POST"))
@@ -36,6 +44,13 @@ func NewRouter(bookRepo *repository.BookRepository, bookInstanceRepo *repository
 	mux.HandleFunc("/api/users", method(userHandler.GetAllUsers, "GET"))
 	mux.HandleFunc("/api/user/", userHandler.UserByIDHandler)
 
+	// User Routes
+	mux.HandleFunc("/api/booking/create", method(bookingHandler.CreateBooking, "POST"))
+	mux.HandleFunc("/api/booking/extend/", method(bookingHandler.ExtendBooking, "PUT"))
+	mux.HandleFunc("/api/booking/cancel/", method(bookingHandler.CancelBooking, "POST"))
+	mux.HandleFunc("/api/booking/end/", method(bookingHandler.EndBooking, "POST"))
+
+	mux.Handle("/swagger/", httpSwagger.WrapHandler)
 	return mux
 }
 
