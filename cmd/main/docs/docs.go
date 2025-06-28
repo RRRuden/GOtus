@@ -222,11 +222,17 @@ const docTemplate = `{
                     "201": {
                         "description": "Бронирование успешно создано",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/internal_api_booking.CreateBookingResponse"
                         }
                     },
                     "400": {
                         "description": "Неверный запрос",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
                         "schema": {
                             "type": "string"
                         }
@@ -964,6 +970,14 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_api_booking.CreateBookingResponse": {
+            "type": "object",
+            "properties": {
+                "booking_id": {
                     "type": "integer"
                 }
             }

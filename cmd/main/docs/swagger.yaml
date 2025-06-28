@@ -74,6 +74,11 @@ definitions:
       user_id:
         type: integer
     type: object
+  internal_api_booking.CreateBookingResponse:
+    properties:
+      booking_id:
+        type: integer
+    type: object
   internal_api_booking.ExtendBookingRequest:
     properties:
       extension_days:
@@ -267,9 +272,13 @@ paths:
         "201":
           description: Бронирование успешно создано
           schema:
-            type: string
+            $ref: '#/definitions/internal_api_booking.CreateBookingResponse'
         "400":
           description: Неверный запрос
+          schema:
+            type: string
+        "500":
+          description: Ошибка сервера
           schema:
             type: string
       summary: Создать бронирование книги

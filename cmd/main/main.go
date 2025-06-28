@@ -9,6 +9,7 @@ import (
 	_ "gotus/cmd/main/docs" // Импорт с побочным эффектом, чтобы инициализировать Swagger
 	router "gotus/internal/api"
 	"gotus/internal/config"
+	grpc "gotus/internal/grpc/server"
 	"gotus/internal/repository"
 	"gotus/internal/service"
 	"log"
@@ -32,21 +33,31 @@ func RunService() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	wg.Add(2)
+	wg.Add(3)
 
 	config := config.LoadConfig("././config/config.yaml")
 	bookRepo := repository.NewBookRepository(config.StoragePath)
 	bookInstanceRepo := repository.NewBookInstanceRepository(config.StoragePath)
 	reservationRepo := repository.NewReservationRepository(config.StoragePath)
 	userRepo := repository.NewUserRepository(config.StoragePath)
+	bookingSerivce := service.NewBookingService(userRepo, bookRepo, bookInstanceRepo, reservationRepo)
 
 	storage := repository.NewStorage(bookRepo, bookInstanceRepo, userRepo, reservationRepo)
 	storage.LoadAllFromCSV()
 
+	grpcAddr := config.BookingServer.Host + ":" + config.BookingServer.Port
+
+	go func() {
+		defer wg.Done()
+		if err := grpc.RunGRPCServer(bookingSerivce, ":"+config.BookingServer.Port); err != nil {
+			log.Fatalf("gRPC сервер ошибка: %v", err)
+		}
+	}()
+
 	// HTTP-сервер
 	srv := &http.Server{
 		Addr:    config.HTTPServer.Host + ":" + config.HTTPServer.Port,
-		Handler: router.NewRouter(bookRepo, bookInstanceRepo, reservationRepo, userRepo),
+		Handler: router.NewRouter(bookRepo, bookInstanceRepo, reservationRepo, userRepo, grpcAddr),
 	}
 
 	go func() {
@@ -56,6 +67,7 @@ func RunService() {
 			log.Fatalf("Ошибка запуска сервера: %v", err)
 		}
 	}()
+
 	go func() {
 		defer wg.Done()
 		service.LogUpdatesWorker(ctx, storage)

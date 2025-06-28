@@ -12,10 +12,15 @@ type HTTPServerConfig struct {
 	Port string `yaml:"port"`
 }
 
+type BookingServerConfig struct {
+	Host string `yaml:"host"`
+	Port string `yaml:"port"`
+}
 type Config struct {
-	Env         string           `yaml:"env"`
-	StoragePath string           `yaml:"storage_path"`
-	HTTPServer  HTTPServerConfig `yaml:"http_server"`
+	Env           string              `yaml:"env"`
+	StoragePath   string              `yaml:"storage_path"`
+	HTTPServer    HTTPServerConfig    `yaml:"http_server"`
+	BookingServer BookingServerConfig `yaml:"booking_server"`
 }
 
 func LoadConfig(path string) *Config {

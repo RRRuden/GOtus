@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package booking_service;
+
+option go_package = "./internal/grpc/api/booking_api";
+
+import "google/protobuf/empty.proto";
+
+message CreateBookingRequest {
+    int32 user_id = 1;
+    string isbn = 2;
+}
+
+message ExtendBookingRequest {
+    int32 booking_id = 1;
+    int32 extension_days = 2;
+}
+
+message CancelBookingRequest {
+    int32 booking_id = 1;
+}
+
+message EndBookingRequest {
+    int32 booking_id = 1;
+}
+
+message CreateBookingResponse {
+    int32 booking_id = 1;
+}
+service BookingService {
+rpc CreateBooking (CreateBookingRequest) returns (CreateBookingResponse);
+rpc ExtendBooking (ExtendBookingRequest) returns (google.protobuf.Empty);
+rpc CancelBooking (CancelBookingRequest) returns (google.protobuf.Empty);
+rpc EndBooking (EndBookingRequest) returns (google.protobuf.Empty);
+}
