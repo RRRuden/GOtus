@@ -10,7 +10,7 @@ import (
 )
 
 type UserHandler struct {
-	Repo *repository.UserRepository
+	Repo repository.UserRepository
 }
 
 type CreateUserRequest struct {

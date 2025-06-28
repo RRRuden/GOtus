@@ -11,7 +11,7 @@ import (
 	"gotus/internal/config"
 	grpc "gotus/internal/grpc/server"
 	"gotus/internal/repository"
-	"gotus/internal/service"
+	"gotus/internal/service/booking"
 	"log"
 	"net/http"
 	"os"
@@ -25,25 +25,19 @@ func main() {
 }
 
 func RunService() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	var wg sync.WaitGroup
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	wg.Add(3)
+	wg.Add(2)
 
 	config := config.LoadConfig("././config/config.yaml")
 	bookRepo := repository.NewBookRepository(config.StoragePath)
 	bookInstanceRepo := repository.NewBookInstanceRepository(config.StoragePath)
 	reservationRepo := repository.NewReservationRepository(config.StoragePath)
 	userRepo := repository.NewUserRepository(config.StoragePath)
-	bookingSerivce := service.NewBookingService(userRepo, bookRepo, bookInstanceRepo, reservationRepo)
-
-	storage := repository.NewStorage(bookRepo, bookInstanceRepo, userRepo, reservationRepo)
-	storage.LoadAllFromCSV()
+	bookingSerivce := booking.NewBookingService(userRepo, bookRepo, bookInstanceRepo, reservationRepo)
 
 	grpcAddr := config.BookingServer.Host + ":" + config.BookingServer.Port
 
@@ -68,21 +62,17 @@ func RunService() {
 		}
 	}()
 
-	go func() {
-		defer wg.Done()
-		service.LogUpdatesWorker(ctx, storage)
-	}()
-
 	// Ожидаем сигнал завершения
 	<-sigs
 	log.Println("Получен сигнал завершения. Завершаем выполнение...")
-
-	cancel() // Отправка сигнала контексту
 
 	// Завершаем http-сервер
 	if err := srv.Shutdown(context.Background()); err != nil {
 		log.Printf("Ошибка при остановке сервера: %v", err)
 	}
+
+	// Завершаем gRPC-сервер
+	grpc.StopGRPCServer()
 
 	wg.Wait() // Ожидание завершения всех горутин
 	log.Println("Все горутины завершены. Приложение остановлено.")

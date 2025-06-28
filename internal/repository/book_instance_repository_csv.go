@@ -9,22 +9,24 @@ import (
 	"sync"
 )
 
-type BookInstanceRepository struct {
+type bookInstanceCsvRepository struct {
 	bookInstances      []*book.BookInstance
 	dataDir            string
 	filename           string
 	bookInstancesMutex sync.Mutex
 }
 
-func NewBookInstanceRepository(dataDir string) *BookInstanceRepository {
-	return &BookInstanceRepository{
+func NewBookInstanceRepository(dataDir string) BookInstanceRepository {
+	repo := &bookInstanceCsvRepository{
 		bookInstances: []*book.BookInstance{},
 		dataDir:       dataDir,
 		filename:      "bookInstances.csv",
 	}
+	repo.loadBookInstancesFromCSV()
+	return repo
 }
 
-func (r *BookInstanceRepository) StoreBookInstance(bi *book.BookInstance) {
+func (r *bookInstanceCsvRepository) StoreBookInstance(bi *book.BookInstance) {
 	r.bookInstancesMutex.Lock()
 	defer r.bookInstancesMutex.Unlock()
 
@@ -32,14 +34,14 @@ func (r *BookInstanceRepository) StoreBookInstance(bi *book.BookInstance) {
 	r.saveBookInstanceToCSV(bi)
 }
 
-func (r *BookInstanceRepository) GetBookInstances() ([]*book.BookInstance, int) {
+func (r *bookInstanceCsvRepository) GetBookInstances() ([]*book.BookInstance, int) {
 	r.bookInstancesMutex.Lock()
 	defer r.bookInstancesMutex.Unlock()
 
 	return r.bookInstances, len(r.bookInstances)
 }
 
-func (r *BookInstanceRepository) LoadBookInstancesFromCSV() {
+func (r *bookInstanceCsvRepository) loadBookInstancesFromCSV() {
 	file, err := os.Open(filepath.Join(r.dataDir, r.filename))
 	if err != nil {
 		return
@@ -59,7 +61,7 @@ func (r *BookInstanceRepository) LoadBookInstancesFromCSV() {
 	}
 }
 
-func (r *BookInstanceRepository) UpdateBookInstanceById(id int, updatedBookInstance *book.BookInstance) bool {
+func (r *bookInstanceCsvRepository) UpdateBookInstanceById(id int, updatedBookInstance *book.BookInstance) bool {
 	r.bookInstancesMutex.Lock()
 	defer r.bookInstancesMutex.Unlock()
 
@@ -79,7 +81,7 @@ func (r *BookInstanceRepository) UpdateBookInstanceById(id int, updatedBookInsta
 	return found
 }
 
-func (r *BookInstanceRepository) FindBookInstanceById(id int) (*book.BookInstance, bool) {
+func (r *bookInstanceCsvRepository) FindBookInstanceById(id int) (*book.BookInstance, bool) {
 	r.bookInstancesMutex.Lock()
 	defer r.bookInstancesMutex.Unlock()
 	for _, b := range r.bookInstances {
@@ -90,7 +92,7 @@ func (r *BookInstanceRepository) FindBookInstanceById(id int) (*book.BookInstanc
 	return nil, false
 }
 
-func (r *BookInstanceRepository) GetBookInstancesByISBN(isbn string) ([]*book.BookInstance, int) {
+func (r *bookInstanceCsvRepository) GetBookInstancesByISBN(isbn string) ([]*book.BookInstance, int) {
 	var result []*book.BookInstance
 	for _, instance := range r.bookInstances {
 		if instance.ISBN == isbn {
@@ -100,7 +102,7 @@ func (r *BookInstanceRepository) GetBookInstancesByISBN(isbn string) ([]*book.Bo
 	return result, len(r.bookInstances)
 }
 
-func (r *BookInstanceRepository) DeleteBookInstanceById(id int) bool {
+func (r *bookInstanceCsvRepository) DeleteBookInstanceById(id int) bool {
 	r.bookInstancesMutex.Lock()
 	defer r.bookInstancesMutex.Unlock()
 
@@ -122,7 +124,7 @@ func (r *BookInstanceRepository) DeleteBookInstanceById(id int) bool {
 	return found
 }
 
-func (r *BookInstanceRepository) saveBookInstanceToCSV(bi *book.BookInstance) {
+func (r *bookInstanceCsvRepository) saveBookInstanceToCSV(bi *book.BookInstance) {
 	file, _ := os.OpenFile(filepath.Join(r.dataDir, r.filename), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	defer file.Close()
 
@@ -132,7 +134,7 @@ func (r *BookInstanceRepository) saveBookInstanceToCSV(bi *book.BookInstance) {
 	_ = w.Write([]string{strconv.Itoa(bi.GetID()), bi.ISBN})
 }
 
-func (r *BookInstanceRepository) saveAllToCSV() {
+func (r *bookInstanceCsvRepository) saveAllToCSV() {
 	file, _ := os.Create(filepath.Join(r.dataDir, r.filename))
 	defer file.Close()
 

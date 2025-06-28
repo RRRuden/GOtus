@@ -3,7 +3,7 @@ package grpc
 import (
 	"context"
 	"gotus/internal/grpc/api/booking_api"
-	"gotus/internal/service"
+	"gotus/internal/service/booking"
 	"log"
 	"net"
 
@@ -14,10 +14,15 @@ import (
 
 type bookingServer struct {
 	booking_api.UnimplementedBookingServiceServer
-	service *service.BookingService
+	service booking.Service
 }
 
-func NewBookingServer(s *service.BookingService) *bookingServer {
+var (
+	grpcServer *grpc.Server
+	listener   net.Listener
+)
+
+func NewBookingServer(s booking.Service) *bookingServer {
 	return &bookingServer{service: s}
 }
 
@@ -44,14 +49,22 @@ func (s *bookingServer) EndBooking(ctx context.Context, req *booking_api.EndBook
 	return &emptypb.Empty{}, err
 }
 
-func RunGRPCServer(service *service.BookingService, listenAddr string) error {
-	lis, err := net.Listen("tcp", listenAddr)
+func RunGRPCServer(service booking.Service, listenAddr string) error {
+	var err error
+	listener, err = net.Listen("tcp", listenAddr)
 	if err != nil {
 		return err
 	}
-	grpcServer := grpc.NewServer()
+	grpcServer = grpc.NewServer()
 	booking_api.RegisterBookingServiceServer(grpcServer, NewBookingServer(service))
 
 	log.Printf("gRPC сервер запущен на %s", listenAddr)
-	return grpcServer.Serve(lis)
+	return grpcServer.Serve(listener)
+}
+
+func StopGRPCServer() {
+	if grpcServer != nil {
+		log.Println("Остановка gRPC сервера...")
+		grpcServer.GracefulStop()
+	}
 }

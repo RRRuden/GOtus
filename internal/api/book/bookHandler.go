@@ -9,7 +9,7 @@ import (
 )
 
 type BookHandler struct {
-	Repo *repository.BookRepository
+	Repo repository.BookRepository
 }
 
 type CreateBookRequest struct {

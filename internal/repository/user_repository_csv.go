@@ -9,35 +9,37 @@ import (
 	"sync"
 )
 
-type UserRepository struct {
+type userCSVRepository struct {
 	users      []*user.User
 	dataDir    string
 	filename   string
 	usersMutex sync.Mutex
 }
 
-func NewUserRepository(dataDir string) *UserRepository {
-	return &UserRepository{
+func NewUserRepository(dataDir string) UserRepository {
+	repo := &userCSVRepository{
 		users:    []*user.User{},
 		dataDir:  dataDir,
 		filename: "users.csv",
 	}
+	repo.loadUsersFromCSV()
+	return repo
 }
 
-func (r *UserRepository) StoreUser(u *user.User) {
+func (r *userCSVRepository) StoreUser(u *user.User) {
 	r.usersMutex.Lock()
 	defer r.usersMutex.Unlock()
 	r.users = append(r.users, u)
 	r.saveUserToCSV(u)
 }
 
-func (r *UserRepository) GetUsers() ([]*user.User, int) {
+func (r *userCSVRepository) GetUsers() ([]*user.User, int) {
 	r.usersMutex.Lock()
 	defer r.usersMutex.Unlock()
 	return r.users, len(r.users)
 }
 
-func (r *UserRepository) LoadUsersFromCSV() {
+func (r *userCSVRepository) loadUsersFromCSV() {
 	file, err := os.Open(filepath.Join(r.dataDir, r.filename))
 	if err != nil {
 		return
@@ -57,7 +59,7 @@ func (r *UserRepository) LoadUsersFromCSV() {
 	}
 }
 
-func (r *UserRepository) UpdateUserById(id int, updatedReservation *user.User) bool {
+func (r *userCSVRepository) UpdateUserById(id int, updatedReservation *user.User) bool {
 	r.usersMutex.Lock()
 	defer r.usersMutex.Unlock()
 
@@ -77,7 +79,7 @@ func (r *UserRepository) UpdateUserById(id int, updatedReservation *user.User) b
 	return found
 }
 
-func (r *UserRepository) FindUserById(id int) (*user.User, bool) {
+func (r *userCSVRepository) FindUserById(id int) (*user.User, bool) {
 	r.usersMutex.Lock()
 	defer r.usersMutex.Unlock()
 	for _, u := range r.users {
@@ -88,7 +90,7 @@ func (r *UserRepository) FindUserById(id int) (*user.User, bool) {
 	return nil, false
 }
 
-func (r *UserRepository) FindUserByEmail(email string) (*user.User, bool) {
+func (r *userCSVRepository) FindUserByEmail(email string) (*user.User, bool) {
 	r.usersMutex.Lock()
 	defer r.usersMutex.Unlock()
 	for _, u := range r.users {
@@ -99,7 +101,7 @@ func (r *UserRepository) FindUserByEmail(email string) (*user.User, bool) {
 	return nil, false
 }
 
-func (r *UserRepository) DeleteUserById(id int) bool {
+func (r *userCSVRepository) DeleteUserById(id int) bool {
 	r.usersMutex.Lock()
 	defer r.usersMutex.Unlock()
 
@@ -121,7 +123,7 @@ func (r *UserRepository) DeleteUserById(id int) bool {
 	return found
 }
 
-func (r *UserRepository) saveUserToCSV(u *user.User) {
+func (r *userCSVRepository) saveUserToCSV(u *user.User) {
 	file, _ := os.OpenFile(filepath.Join(r.dataDir, r.filename), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	defer file.Close()
 
@@ -131,7 +133,7 @@ func (r *UserRepository) saveUserToCSV(u *user.User) {
 	_ = w.Write([]string{strconv.Itoa(u.GetID()), u.Name, u.Email})
 }
 
-func (r *UserRepository) saveAllToCSV() {
+func (r *userCSVRepository) saveAllToCSV() {
 	file, _ := os.Create(filepath.Join(r.dataDir, r.filename))
 	defer file.Close()
 

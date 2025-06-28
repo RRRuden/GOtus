@@ -12,7 +12,7 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
-func NewRouter(bookRepo *repository.BookRepository, bookInstanceRepo *repository.BookInstanceRepository, resRepo *repository.ReservationRepository, userRepo *repository.UserRepository, grpcAddr string) http.Handler {
+func NewRouter(bookRepo repository.BookRepository, bookInstanceRepo repository.BookInstanceRepository, resRepo repository.ReservationRepository, userRepo repository.UserRepository, grpcAddr string) http.Handler {
 	mux := http.NewServeMux()
 
 	bookHandler := &b_handler.BookHandler{Repo: bookRepo}

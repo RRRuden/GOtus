@@ -10,7 +10,7 @@ import (
 )
 
 type BookInstanceHandler struct {
-	Repo *repository.BookInstanceRepository
+	Repo repository.BookInstanceRepository
 }
 
 type CreateBookInstanceRequest struct {

@@ -11,7 +11,7 @@ import (
 )
 
 type ReservationHandler struct {
-	Repo *repository.ReservationRepository
+	Repo repository.ReservationRepository
 }
 
 type CreateReservationRequest struct {

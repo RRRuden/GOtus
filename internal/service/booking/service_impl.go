@@ -1,4 +1,4 @@
-package service
+package booking
 
 import (
 	"errors"
@@ -8,11 +8,11 @@ import (
 	"gotus/internal/repository"
 )
 
-type BookingService struct {
-	UserRepo         *repository.UserRepository
-	BookRepo         *repository.BookRepository
-	BookInstanceRepo *repository.BookInstanceRepository
-	ReservationRepo  *repository.ReservationRepository
+type bookingService struct {
+	UserRepo         repository.UserRepository
+	BookRepo         repository.BookRepository
+	BookInstanceRepo repository.BookInstanceRepository
+	ReservationRepo  repository.ReservationRepository
 }
 
 var (
@@ -27,12 +27,12 @@ var (
 )
 
 func NewBookingService(
-	userRepo *repository.UserRepository,
-	bookRepo *repository.BookRepository,
-	bookInstanceRepo *repository.BookInstanceRepository,
-	reservationRepo *repository.ReservationRepository,
-) *BookingService {
-	return &BookingService{
+	userRepo repository.UserRepository,
+	bookRepo repository.BookRepository,
+	bookInstanceRepo repository.BookInstanceRepository,
+	reservationRepo repository.ReservationRepository,
+) Service {
+	return &bookingService{
 		UserRepo:         userRepo,
 		BookRepo:         bookRepo,
 		BookInstanceRepo: bookInstanceRepo,
@@ -41,7 +41,7 @@ func NewBookingService(
 }
 
 // 1. CreateBooking создаёт бронирование, если пользователь, книга и свободный экземпляр найдены
-func (s *BookingService) CreateBooking(userID int, isbn string) (*reservation.Reservation, error) {
+func (s *bookingService) CreateBooking(userID int, isbn string) (*reservation.Reservation, error) {
 	// Проверка пользователя
 	if _, ok := s.UserRepo.FindUserById(userID); !ok {
 		return nil, ErrUserNotFound
@@ -60,7 +60,7 @@ func (s *BookingService) CreateBooking(userID int, isbn string) (*reservation.Re
 			// Создаем бронирование
 			now := time.Now()
 			newReservation := reservation.NewReservation(
-				s.ReservationRepo.GenerateID(),
+				0,
 				instance.GetID(),
 				userID,
 				int(reservation.StatusBooked),
@@ -76,13 +76,13 @@ func (s *BookingService) CreateBooking(userID int, isbn string) (*reservation.Re
 }
 
 // 2. ExtendBooking продлевает бронирование на ExtensionTime, max 7 дней
-func (s *BookingService) ExtendBooking(reservationID int, extensionDays int) (bool, error) {
+func (s *bookingService) ExtendBooking(reservationID int, extensionDays int) (bool, error) {
 	if extensionDays <= 0 || extensionDays > 7 {
 		return false, ErrExtensionTooLong
 	}
 
 	res, ok := s.ReservationRepo.FindReservationById(reservationID)
-	if !ok || (res.ReservationStatusID != int(reservation.StatusBooked) && res.ReservationStatusID != int(reservation.StatusEnded)) {
+	if !ok || (res.ReservationStatusID == int(reservation.StatusCancelled) || res.ReservationStatusID == int(reservation.StatusEnded)) {
 		return false, ErrInvalidStatus
 	}
 
@@ -93,7 +93,7 @@ func (s *BookingService) ExtendBooking(reservationID int, extensionDays int) (bo
 }
 
 // 3. CancelBooking отменяет бронирование, если сегодня день начала
-func (s *BookingService) CancelBooking(reservationID int) (bool, error) {
+func (s *bookingService) CancelBooking(reservationID int) (bool, error) {
 	res, ok := s.ReservationRepo.FindReservationById(reservationID)
 	if !ok {
 		return false, ErrReservationNotFound
@@ -111,9 +111,9 @@ func (s *BookingService) CancelBooking(reservationID int) (bool, error) {
 }
 
 // 4. EndBooking завершает бронирование, если уже не день начала
-func (s *BookingService) EndBooking(reservationID int) (bool, error) {
+func (s *bookingService) EndBooking(reservationID int) (bool, error) {
 	res, ok := s.ReservationRepo.FindReservationById(reservationID)
-	if !ok || (res.ReservationStatusID != int(reservation.StatusCancelled) && res.ReservationStatusID != int(reservation.StatusEnded)) {
+	if !ok || (res.ReservationStatusID == reservation.StatusCancelled) || (res.ReservationStatusID == int(reservation.StatusEnded)) {
 		return false, ErrInvalidStatus
 	}
 

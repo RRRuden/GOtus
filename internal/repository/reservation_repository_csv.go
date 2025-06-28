@@ -10,35 +10,40 @@ import (
 	"time"
 )
 
-type ReservationRepository struct {
+type reservationCSVRepository struct {
 	reservations      []*reservation.Reservation
 	dataDir           string
 	filename          string
 	reservationsMutex sync.Mutex
 }
 
-func NewReservationRepository(dataDir string) *ReservationRepository {
-	return &ReservationRepository{
+func NewReservationRepository(dataDir string) ReservationRepository {
+	repo := &reservationCSVRepository{
 		reservations: []*reservation.Reservation{},
 		dataDir:      dataDir,
 		filename:     "reservations.csv",
 	}
+	repo.loadReservationsFromCSV()
+	return repo
 }
 
-func (repo *ReservationRepository) StoreReservation(r *reservation.Reservation) {
+func (repo *reservationCSVRepository) StoreReservation(r *reservation.Reservation) {
 	repo.reservationsMutex.Lock()
 	defer repo.reservationsMutex.Unlock()
+	if r.GetID() == 0 {
+		r.SetID(repo.generateID())
+	}
 	repo.reservations = append(repo.reservations, r)
 	repo.saveReservationToCSV(r)
 }
 
-func (repo *ReservationRepository) GetReservations() ([]*reservation.Reservation, int) {
+func (repo *reservationCSVRepository) GetReservations() ([]*reservation.Reservation, int) {
 	repo.reservationsMutex.Lock()
 	defer repo.reservationsMutex.Unlock()
 	return repo.reservations, len(repo.reservations)
 }
 
-func (repo *ReservationRepository) LoadReservationsFromCSV() {
+func (repo *reservationCSVRepository) loadReservationsFromCSV() {
 	file, err := os.Open(filepath.Join(repo.dataDir, repo.filename))
 	if err != nil {
 		return
@@ -64,7 +69,7 @@ func (repo *ReservationRepository) LoadReservationsFromCSV() {
 	}
 }
 
-func (r *ReservationRepository) UpdateReservationById(id int, updatedReservation *reservation.Reservation) bool {
+func (r *reservationCSVRepository) UpdateReservationById(id int, updatedReservation *reservation.Reservation) bool {
 	r.reservationsMutex.Lock()
 	defer r.reservationsMutex.Unlock()
 
@@ -84,7 +89,7 @@ func (r *ReservationRepository) UpdateReservationById(id int, updatedReservation
 	return found
 }
 
-func (repo *ReservationRepository) FindReservationById(id int) (*reservation.Reservation, bool) {
+func (repo *reservationCSVRepository) FindReservationById(id int) (*reservation.Reservation, bool) {
 	repo.reservationsMutex.Lock()
 	defer repo.reservationsMutex.Unlock()
 	for _, r := range repo.reservations {
@@ -95,7 +100,7 @@ func (repo *ReservationRepository) FindReservationById(id int) (*reservation.Res
 	return nil, false
 }
 
-func (repo *ReservationRepository) DeleteReservationById(id int) bool {
+func (repo *reservationCSVRepository) DeleteReservationById(id int) bool {
 	repo.reservationsMutex.Lock()
 	defer repo.reservationsMutex.Unlock()
 
@@ -117,7 +122,7 @@ func (repo *ReservationRepository) DeleteReservationById(id int) bool {
 	return found
 }
 
-func (r *ReservationRepository) HasActiveReservation(bookInstanceID int) bool {
+func (r *reservationCSVRepository) HasActiveReservation(bookInstanceID int) bool {
 	for _, res := range r.reservations {
 		if res.BookInstanceID == bookInstanceID {
 			statusID := res.ReservationStatusID
@@ -129,7 +134,7 @@ func (r *ReservationRepository) HasActiveReservation(bookInstanceID int) bool {
 	return false
 }
 
-func (r *ReservationRepository) GenerateID() int {
+func (r *reservationCSVRepository) generateID() int {
 	if len(r.reservations) == 0 {
 		return 1
 	}
@@ -142,7 +147,7 @@ func (r *ReservationRepository) GenerateID() int {
 	return maxID + 1
 }
 
-func (repo *ReservationRepository) saveReservationToCSV(r *reservation.Reservation) {
+func (repo *reservationCSVRepository) saveReservationToCSV(r *reservation.Reservation) {
 	file, _ := os.OpenFile(filepath.Join(repo.dataDir, repo.filename), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	defer file.Close()
 
@@ -159,7 +164,7 @@ func (repo *ReservationRepository) saveReservationToCSV(r *reservation.Reservati
 	})
 }
 
-func (repo *ReservationRepository) saveAllToCSV() {
+func (repo *reservationCSVRepository) saveAllToCSV() {
 	file, _ := os.Create(filepath.Join(repo.dataDir, repo.filename))
 	defer file.Close()
 
