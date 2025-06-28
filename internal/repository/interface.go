@@ -6,6 +6,7 @@ import (
 	"gotus/internal/model/user"
 )
 
+//go:generate mockgen -source=interface.go -destination=../mocks/book_repository_mock.go -package=mocks
 type BookRepository interface {
 	StoreBook(b *book.Book)
 	GetBooks() ([]*book.Book, int)
@@ -14,6 +15,7 @@ type BookRepository interface {
 	FindBookByISBN(isbn string) (*book.Book, bool)
 }
 
+//go:generate mockgen -source=interface.go -destination=../mocks/book_instance_repository_mock.go -package=mocks
 type BookInstanceRepository interface {
 	StoreBookInstance(bi *book.BookInstance)
 	GetBookInstances() ([]*book.BookInstance, int)
@@ -23,6 +25,7 @@ type BookInstanceRepository interface {
 	DeleteBookInstanceById(id int) bool
 }
 
+//go:generate mockgen -source=interface.go -destination=../mocks/reservation_repository_mock.go -package=mocks
 type ReservationRepository interface {
 	StoreReservation(r *reservation.Reservation)
 	GetReservations() ([]*reservation.Reservation, int)
@@ -32,6 +35,7 @@ type ReservationRepository interface {
 	HasActiveReservation(bookInstanceID int) bool
 }
 
+//go:generate mockgen -source=interface.go -destination=../mocks/user_repository_mock.go -package=mocks
 type UserRepository interface {
 	StoreUser(u *user.User)
 	GetUsers() ([]*user.User, int)
