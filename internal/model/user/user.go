@@ -5,21 +5,21 @@ import (
 )
 
 type User struct {
-	id    int
-	Name  string
-	Email string
+	Id    int    `json:"Id" bson:"id"`
+	Name  string `json:"Name" bson:"name"`
+	Email string `json:"Email" bson:"email"`
 }
 
 func NewUser(id int, name, email string) *User {
 	return &User{
-		id:    id,
+		Id:    id,
 		Name:  name,
 		Email: email,
 	}
 }
 
 func (u *User) GetID() int {
-	return u.id
+	return u.Id
 }
 
 func (u User) String() string {

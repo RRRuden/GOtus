@@ -15,22 +15,23 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func newBookingServiceWithMocks(ctrl *gomock.Controller) (*booking.Service, *mocks.MockUserRepository, *mocks.MockBookRepository, *mocks.MockBookInstanceRepository, *mocks.MockReservationRepository) {
+func newBookingServiceWithMocks(ctrl *gomock.Controller) (*booking.Service, *mocks.MockUserRepository, *mocks.MockBookRepository, *mocks.MockBookInstanceRepository, *mocks.MockReservationRepository, *mocks.MockLogger) {
 	userRepo := mocks.NewMockUserRepository(ctrl)
 	bookRepo := mocks.NewMockBookRepository(ctrl)
 	instanceRepo := mocks.NewMockBookInstanceRepository(ctrl)
 	resRepo := mocks.NewMockReservationRepository(ctrl)
-	service := booking.NewBookingService(userRepo, bookRepo, instanceRepo, resRepo)
-	return &service, userRepo, bookRepo, instanceRepo, resRepo
+	logger := mocks.NewMockLogger(ctrl)
+	service := booking.NewBookingService(userRepo, bookRepo, instanceRepo, resRepo, logger)
+	logger.EXPECT().Log(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	return &service, userRepo, bookRepo, instanceRepo, resRepo, logger
 }
 
 func TestCreateBooking_UserNotFound(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	svc, userRepo, _, _, _ := newBookingServiceWithMocks(ctrl)
+	svc, userRepo, _, _, _, _ := newBookingServiceWithMocks(ctrl)
 
 	userRepo.EXPECT().FindUserById(1).Return(nil, false)
-
 	res, err := (*svc).CreateBooking(1, "978-0-00-000000-0")
 	assert.Nil(t, res)
 	assert.ErrorIs(t, err, booking.ErrUserNotFound)
@@ -39,7 +40,7 @@ func TestCreateBooking_UserNotFound(t *testing.T) {
 func TestCreateBooking_BookNotFound(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	svc, userRepo, bookRepo, _, _ := newBookingServiceWithMocks(ctrl)
+	svc, userRepo, bookRepo, _, _, _ := newBookingServiceWithMocks(ctrl)
 
 	userRepo.EXPECT().FindUserById(1).Return(&user.User{}, true)
 	bookRepo.EXPECT().FindBookByISBN("isbn").Return(nil, false)
@@ -52,7 +53,7 @@ func TestCreateBooking_BookNotFound(t *testing.T) {
 func TestCreateBooking_NoAvailableInstances(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	svc, userRepo, bookRepo, instanceRepo, resRepo := newBookingServiceWithMocks(ctrl)
+	svc, userRepo, bookRepo, instanceRepo, resRepo, _ := newBookingServiceWithMocks(ctrl)
 
 	userRepo.EXPECT().FindUserById(1).Return(&user.User{}, true)
 	bookRepo.EXPECT().FindBookByISBN("isbn").Return(&book.Book{}, true)
@@ -70,9 +71,7 @@ func TestExtendBooking_InvalidStatus(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockReservationRepo := mocks.NewMockReservationRepository(ctrl)
-
-	svc := booking.NewBookingService(nil, nil, nil, mockReservationRepo)
+	svc, _, _, _, resRepo, _ := newBookingServiceWithMocks(ctrl)
 
 	tests := []struct {
 		name     string
@@ -85,7 +84,7 @@ func TestExtendBooking_InvalidStatus(t *testing.T) {
 			name:     "StatusCancelled_ShouldFail",
 			statusID: int(reservation.StatusCancelled),
 			mock: func() {
-				mockReservationRepo.EXPECT().
+				resRepo.EXPECT().
 					FindReservationById(1).
 					Return(reservation.NewReservation(1, 1, 1, reservation.StatusCancelled, time.Now(), time.Now().Add(3*24*time.Hour)), true)
 			},
@@ -96,7 +95,7 @@ func TestExtendBooking_InvalidStatus(t *testing.T) {
 			name:     "StatusEnded_ShouldFail",
 			statusID: int(reservation.StatusExtended),
 			mock: func() {
-				mockReservationRepo.EXPECT().
+				resRepo.EXPECT().
 					FindReservationById(1).
 					Return(reservation.NewReservation(1, 1, 1, reservation.StatusEnded, time.Now(), time.Now().Add(3*24*time.Hour)), true)
 			},
@@ -109,7 +108,7 @@ func TestExtendBooking_InvalidStatus(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.mock()
 
-			ok, err := svc.ExtendBooking(1, 3)
+			ok, err := (*svc).ExtendBooking(1, 3)
 
 			require.Equal(t, tt.wantOk, ok)
 			require.ErrorIs(t, err, tt.wantErr)
@@ -121,9 +120,7 @@ func TestBookingService_ExtendBooking_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockReservationRepo := mocks.NewMockReservationRepository(ctrl)
-
-	svc := booking.NewBookingService(nil, nil, nil, mockReservationRepo)
+	svc, _, _, _, resRepo, _ := newBookingServiceWithMocks(ctrl)
 
 	now := time.Now()
 
@@ -140,11 +137,11 @@ func TestBookingService_ExtendBooking_Success(t *testing.T) {
 			mock: func() {
 				res := reservation.NewReservation(1, 1, 1, reservation.StatusExtended, now.AddDate(0, 0, -10), now.AddDate(0, 0, 7))
 
-				mockReservationRepo.EXPECT().
+				resRepo.EXPECT().
 					FindReservationById(1).
 					Return(res, true)
 
-				mockReservationRepo.EXPECT().
+				resRepo.EXPECT().
 					UpdateReservationById(1, gomock.Any()).
 					Return(true)
 			},
@@ -157,11 +154,11 @@ func TestBookingService_ExtendBooking_Success(t *testing.T) {
 			mock: func() {
 				res := reservation.NewReservation(1, 1, 1, reservation.StatusExtended, now.AddDate(0, 0, -10), now.AddDate(0, 0, 7))
 
-				mockReservationRepo.EXPECT().
+				resRepo.EXPECT().
 					FindReservationById(1).
 					Return(res, true)
 
-				mockReservationRepo.EXPECT().
+				resRepo.EXPECT().
 					UpdateReservationById(1, gomock.Any()).
 					Return(true)
 			},
@@ -174,7 +171,7 @@ func TestBookingService_ExtendBooking_Success(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.mock()
 
-			ok, err := svc.ExtendBooking(1, 3)
+			ok, err := (*svc).ExtendBooking(1, 3)
 
 			require.Equal(t, tt.wantOk, ok)
 			require.ErrorIs(t, err, tt.wantErr)
@@ -185,7 +182,7 @@ func TestBookingService_ExtendBooking_Success(t *testing.T) {
 func TestCancelBooking_NotToday(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	svc, _, _, _, resRepo := newBookingServiceWithMocks(ctrl)
+	svc, _, _, _, resRepo, _ := newBookingServiceWithMocks(ctrl)
 
 	res := reservation.NewReservation(1, 1, 1, int(reservation.StatusBooked), time.Now().AddDate(0, 0, -1), time.Now())
 	resRepo.EXPECT().FindReservationById(1).Return(res, true)
@@ -198,7 +195,7 @@ func TestCancelBooking_NotToday(t *testing.T) {
 func TestEndBooking_Today(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	svc, _, _, _, resRepo := newBookingServiceWithMocks(ctrl)
+	svc, _, _, _, resRepo, _ := newBookingServiceWithMocks(ctrl)
 
 	now := time.Now()
 	res := reservation.NewReservation(1, 1, 1, int(reservation.StatusBooked), now, now.AddDate(0, 0, 1))
@@ -213,12 +210,7 @@ func TestCreateBooking_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUserRepo := mocks.NewMockUserRepository(ctrl)
-	mockBookRepo := mocks.NewMockBookRepository(ctrl)
-	mockInstanceRepo := mocks.NewMockBookInstanceRepository(ctrl)
-	mockReservationRepo := mocks.NewMockReservationRepository(ctrl)
-
-	service := booking.NewBookingService(mockUserRepo, mockBookRepo, mockInstanceRepo, mockReservationRepo)
+	service, mockUserRepo, mockBookRepo, mockInstanceRepo, mockReservationRepo, _ := newBookingServiceWithMocks(ctrl)
 
 	userID := 1
 	isbn := "978-1-56619-909-4"
@@ -232,7 +224,7 @@ func TestCreateBooking_Success(t *testing.T) {
 	mockReservationRepo.EXPECT().HasActiveReservation(bookInstanceID).Return(false)
 	mockReservationRepo.EXPECT().StoreReservation(gomock.Any())
 
-	res, err := service.CreateBooking(userID, isbn)
+	res, err := (*service).CreateBooking(userID, isbn)
 	assert.NoError(t, err)
 	assert.Equal(t, userID, res.UserID)
 	assert.Equal(t, bookInstanceID, res.BookInstanceID)
@@ -243,10 +235,9 @@ func TestExtendBooking_TooLong(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockReservationRepo := mocks.NewMockReservationRepository(ctrl)
-	service := booking.NewBookingService(nil, nil, nil, mockReservationRepo)
+	service, _, _, _, _, _ := newBookingServiceWithMocks(ctrl)
 
-	success, err := service.ExtendBooking(1, 10)
+	success, err := (*service).ExtendBooking(1, 10)
 	assert.False(t, success)
 	assert.ErrorIs(t, err, booking.ErrExtensionTooLong)
 }
@@ -255,13 +246,12 @@ func TestCancelBooking_InvalidDate(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockReservationRepo := mocks.NewMockReservationRepository(ctrl)
-	service := booking.NewBookingService(nil, nil, nil, mockReservationRepo)
+	service, _, _, _, mockReservationRepo, _ := newBookingServiceWithMocks(ctrl)
 
 	res := reservation.NewReservation(1, 1, 1, int(reservation.StatusBooked), time.Now().AddDate(0, 0, -1), time.Now().AddDate(0, 0, 6))
 	mockReservationRepo.EXPECT().FindReservationById(1).Return(res, true)
 
-	success, err := service.CancelBooking(1)
+	success, err := (*service).CancelBooking(1)
 	assert.False(t, success)
 	assert.ErrorIs(t, err, booking.ErrCancelDateMismatch)
 }
@@ -270,9 +260,7 @@ func TestEndBooking_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockReservationRepo := mocks.NewMockReservationRepository(ctrl)
-
-	svc := booking.NewBookingService(nil, nil, nil, mockReservationRepo)
+	svc, _, _, _, mockReservationRepo, _ := newBookingServiceWithMocks(ctrl)
 
 	now := time.Now()
 
@@ -323,7 +311,7 @@ func TestEndBooking_Success(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.mock()
 
-			ok, err := svc.EndBooking(1)
+			ok, err := (*svc).EndBooking(1)
 
 			require.Equal(t, tt.wantOk, ok)
 			require.ErrorIs(t, err, tt.wantErr)
@@ -334,7 +322,7 @@ func TestEndBooking_Success(t *testing.T) {
 func TestCancelBooking_ReservationNotFound(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	svc, _, _, _, repo := newBookingServiceWithMocks(ctrl)
+	svc, _, _, _, repo, _ := newBookingServiceWithMocks(ctrl)
 
 	repo.EXPECT().FindReservationById(1).Return(nil, false)
 
@@ -346,15 +334,13 @@ func TestCancelBooking_ReservationNotFound(t *testing.T) {
 func TestCancelBooking__Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-
-	mockReservationRepo := mocks.NewMockReservationRepository(ctrl)
-	service := booking.NewBookingService(nil, nil, nil, mockReservationRepo)
+	service, _, _, _, mockReservationRepo, _ := newBookingServiceWithMocks(ctrl)
 
 	res := reservation.NewReservation(1, 1, 1, int(reservation.StatusEnded), time.Now(), time.Now())
 	mockReservationRepo.EXPECT().FindReservationById(1).Return(res, true)
 	mockReservationRepo.EXPECT().UpdateReservationById(1, gomock.Any()).Return(true)
 
-	success, err := service.CancelBooking(1)
+	success, err := (*service).CancelBooking(1)
 	assert.True(t, success)
 	assert.NoError(t, err)
 }
@@ -363,9 +349,7 @@ func TestEndBooking__InvalidStatus(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockReservationRepo := mocks.NewMockReservationRepository(ctrl)
-
-	svc := booking.NewBookingService(nil, nil, nil, mockReservationRepo)
+	svc, _, _, _, mockReservationRepo, _ := newBookingServiceWithMocks(ctrl)
 
 	tests := []struct {
 		name     string
@@ -402,7 +386,7 @@ func TestEndBooking__InvalidStatus(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.mock()
 
-			ok, err := svc.EndBooking(1)
+			ok, err := (*svc).EndBooking(1)
 
 			require.Equal(t, tt.wantOk, ok)
 			require.ErrorIs(t, err, tt.wantErr)

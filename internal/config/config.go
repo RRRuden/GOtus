@@ -16,11 +16,25 @@ type BookingServerConfig struct {
 	Host string `yaml:"host"`
 	Port string `yaml:"port"`
 }
+
+type MongoDBConfig struct {
+	URI      string `yaml:"uri"`
+	Database string `yaml:"database"`
+}
+
+type RedisConfig struct {
+	Addr     string `yaml:"addr"`
+	Password string `yaml:"password"`
+	DB       int    `yaml:"db"`
+}
+
 type Config struct {
 	Env           string              `yaml:"env"`
 	StoragePath   string              `yaml:"storage_path"`
 	HTTPServer    HTTPServerConfig    `yaml:"http_server"`
 	BookingServer BookingServerConfig `yaml:"booking_server"`
+	MongoDB       MongoDBConfig       `yaml:"mongodb"`
+	Redis         RedisConfig         `yaml:"redis"`
 }
 
 func LoadConfig(path string) *Config {

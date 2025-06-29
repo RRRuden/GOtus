@@ -9,7 +9,9 @@ import (
 	_ "gotus/cmd/main/docs" // Импорт с побочным эффектом, чтобы инициализировать Swagger
 	router "gotus/internal/api"
 	"gotus/internal/config"
+	"gotus/internal/generator"
 	grpc "gotus/internal/grpc/server"
+	"gotus/internal/logger"
 	"gotus/internal/repository"
 	"gotus/internal/service/booking"
 	"log"
@@ -18,6 +20,9 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func main() {
@@ -33,11 +38,25 @@ func RunService() {
 	wg.Add(2)
 
 	config := config.LoadConfig("././config/config.yaml")
-	bookRepo := repository.NewBookRepository(config.StoragePath)
-	bookInstanceRepo := repository.NewBookInstanceRepository(config.StoragePath)
-	reservationRepo := repository.NewReservationRepository(config.StoragePath)
-	userRepo := repository.NewUserRepository(config.StoragePath)
-	bookingSerivce := booking.NewBookingService(userRepo, bookRepo, bookInstanceRepo, reservationRepo)
+	ctx := context.Background()
+	// MongoDB
+	mongoClient, err := mongo.NewClient(options.Client().ApplyURI(config.MongoDB.URI))
+	if err != nil {
+		log.Fatalf("Ошибка создания Mongo клиента: %v", err)
+	}
+	if err := mongoClient.Connect(ctx); err != nil {
+		log.Fatalf("Ошибка подключения к MongoDB: %v", err)
+	}
+	mongoDB := mongoClient.Database(config.MongoDB.Database)
+
+	bookRepo := repository.NewMongoBookRepository(mongoDB)
+	bookInstanceRepo := repository.NewMongoBookInstanceRepository(mongoDB)
+	reservationRepo := repository.NewMongoReservationRepository(mongoDB)
+	userRepo := repository.NewMongoUserRepository(mongoDB)
+	logger := logger.NewRedisLogger(config.Redis.Addr, config.Redis.Password, config.Redis.DB)
+	bookingSerivce := booking.NewBookingService(userRepo, bookRepo, bookInstanceRepo, reservationRepo, logger)
+
+	generator.GenerateInitialDataForMongoDb(userRepo, bookRepo, bookInstanceRepo, reservationRepo)
 
 	grpcAddr := config.BookingServer.Host + ":" + config.BookingServer.Port
 
@@ -73,6 +92,8 @@ func RunService() {
 
 	// Завершаем gRPC-сервер
 	grpc.StopGRPCServer()
+
+	mongoClient.Disconnect(ctx)
 
 	wg.Wait() // Ожидание завершения всех горутин
 	log.Println("Все горутины завершены. Приложение остановлено.")

@@ -16,7 +16,7 @@ type bookInstanceCsvRepository struct {
 	bookInstancesMutex sync.Mutex
 }
 
-func NewBookInstanceRepository(dataDir string) BookInstanceRepository {
+func NewBookInstanceCSVRepository(dataDir string) BookInstanceRepository {
 	repo := &bookInstanceCsvRepository{
 		bookInstances: []*book.BookInstance{},
 		dataDir:       dataDir,

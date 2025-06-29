@@ -5,19 +5,19 @@ import (
 )
 
 type BookInstance struct {
-	id   int
-	ISBN string
+	Id   int    `json:"Id" bson:"id"`
+	ISBN string `json:"ISBN" bson:"isbn"`
 }
 
 func NewBookInstance(id int, isbn string) *BookInstance {
 	return &BookInstance{
-		id:   id,
+		Id:   id,
 		ISBN: isbn,
 	}
 }
 
 func (bi *BookInstance) GetID() int {
-	return bi.id
+	return bi.Id
 }
 
 func (bi BookInstance) String() string {

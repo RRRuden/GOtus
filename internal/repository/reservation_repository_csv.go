@@ -17,7 +17,7 @@ type reservationCSVRepository struct {
 	reservationsMutex sync.Mutex
 }
 
-func NewReservationRepository(dataDir string) ReservationRepository {
+func NewReservationCSVRepository(dataDir string) ReservationRepository {
 	repo := &reservationCSVRepository{
 		reservations: []*reservation.Reservation{},
 		dataDir:      dataDir,

@@ -16,7 +16,7 @@ type userCSVRepository struct {
 	usersMutex sync.Mutex
 }
 
-func NewUserRepository(dataDir string) UserRepository {
+func NewUserCSVRepository(dataDir string) UserRepository {
 	repo := &userCSVRepository{
 		users:    []*user.User{},
 		dataDir:  dataDir,
