@@ -25,6 +25,20 @@ type UpdateBookRequest struct {
 	Year   int    `json:"year"`
 }
 
+type ErrorResponse struct {
+	Message string `json:"message"`
+}
+
+func writeError(w http.ResponseWriter, status int, msg string) {
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(ErrorResponse{Message: msg})
+}
+
+func writeJSON(w http.ResponseWriter, data any) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(data)
+}
+
 // CreateBook godoc
 // @Summary      Добавить новую книгу
 // @Description  Создание новой книги и добавление её в хранилище
@@ -33,23 +47,28 @@ type UpdateBookRequest struct {
 // @Produce      json
 // @Param        book body CreateBookRequest true "Данные книги"
 // @Success      201
-// @Failure      400 {string} string "invalid request"
+// @Failure      400 {object} ErrorResponse
+// @Failure      500 {object} ErrorResponse
 // @Router       /api/book [post]
 func (h *BookHandler) CreateBook(w http.ResponseWriter, r *http.Request) {
 	var req CreateBookRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Неверный формат запроса")
 		return
 	}
 
 	b, err := book.NewBook(req.ISBN, req.Title, req.Author, req.Year)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	h.Repo.StoreBook(b)
+	if err := h.Repo.StoreBook(b); err != nil {
+		writeError(w, http.StatusInternalServerError, "Ошибка при сохранении книги")
+		return
+	}
+
 	w.WriteHeader(http.StatusCreated)
 }
 
@@ -59,10 +78,15 @@ func (h *BookHandler) CreateBook(w http.ResponseWriter, r *http.Request) {
 // @Tags         book
 // @Produce      json
 // @Success      200 {array} book.Book
+// @Failure      500 {object} ErrorResponse
 // @Router       /api/books [get]
 func (h *BookHandler) GetAllBooks(w http.ResponseWriter, r *http.Request) {
-	books, _ := h.Repo.GetBooks()
-	json.NewEncoder(w).Encode(books)
+	books, _, err := h.Repo.GetBooks()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Ошибка при получении списка книг")
+		return
+	}
+	writeJSON(w, books)
 }
 
 func (h *BookHandler) BookByISBNHandler(w http.ResponseWriter, r *http.Request) {
@@ -75,7 +99,7 @@ func (h *BookHandler) BookByISBNHandler(w http.ResponseWriter, r *http.Request) 
 	case http.MethodDelete:
 		h.DeleteBook(w, r, isbn)
 	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 	}
 }
 
@@ -86,15 +110,20 @@ func (h *BookHandler) BookByISBNHandler(w http.ResponseWriter, r *http.Request) 
 // @Produce      json
 // @Param        isbn path string true "ISBN книги"
 // @Success      200 {object} book.Book
-// @Failure      404 {string} string "not found"
+// @Failure      404 {object} ErrorResponse
+// @Failure      500 {object} ErrorResponse
 // @Router       /api/book/{isbn} [get]
 func (h *BookHandler) GetBookByISBN(w http.ResponseWriter, r *http.Request, isbn string) {
-	b, ok := h.Repo.FindBookByISBN(isbn)
-	if !ok {
-		http.NotFound(w, r)
+	b, _, err := h.Repo.FindBookByISBN(isbn)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Ошибка при поиске книги")
 		return
 	}
-	json.NewEncoder(w).Encode(b)
+	if b == nil {
+		writeError(w, http.StatusNotFound, "Книга не найдена")
+		return
+	}
+	writeJSON(w, b)
 }
 
 // UpdateBook godoc
@@ -105,24 +134,30 @@ func (h *BookHandler) GetBookByISBN(w http.ResponseWriter, r *http.Request, isbn
 // @Param        isbn path string true "ISBN книги"
 // @Param        book body UpdateBookRequest true "Обновлённые данные книги"
 // @Success      200
-// @Failure      400 {string} string "invalid request"
-// @Failure      404 {string} string "not found"
+// @Failure      400 {object} ErrorResponse
+// @Failure      404 {object} ErrorResponse
+// @Failure      500 {object} ErrorResponse
 // @Router       /api/book/{isbn} [put]
 func (h *BookHandler) UpdateBook(w http.ResponseWriter, r *http.Request, isbn string) {
 	var req UpdateBookRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Неверный формат запроса")
 		return
 	}
 
 	b, err := book.NewBook(isbn, req.Title, req.Author, req.Year)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	if !h.Repo.UpdateBookByISBN(isbn, b) {
-		http.NotFound(w, r)
+	ok, err := h.Repo.UpdateBookByISBN(isbn, b)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Ошибка при обновлении книги")
+		return
+	}
+	if !ok {
+		writeError(w, http.StatusNotFound, "Книга не найдена")
 		return
 	}
 
@@ -135,11 +170,17 @@ func (h *BookHandler) UpdateBook(w http.ResponseWriter, r *http.Request, isbn st
 // @Tags         book
 // @Param        isbn path string true "ISBN книги"
 // @Success      200
-// @Failure      404 {string} string "not found"
+// @Failure      404 {object} ErrorResponse
+// @Failure      500 {object} ErrorResponse
 // @Router       /api/book/{isbn} [delete]
 func (h *BookHandler) DeleteBook(w http.ResponseWriter, r *http.Request, isbn string) {
-	if !h.Repo.DeleteBookByISBN(isbn) {
-		http.NotFound(w, r)
+	ok, err := h.Repo.DeleteBookByISBN(isbn)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Ошибка при удалении книги")
+		return
+	}
+	if !ok {
+		writeError(w, http.StatusNotFound, "Книга не найдена")
 		return
 	}
 	w.WriteHeader(http.StatusOK)

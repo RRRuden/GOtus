@@ -45,26 +45,42 @@ func NewBookingService(
 	}
 }
 
-// 1. CreateBooking создаёт бронирование, если пользователь, книга и свободный экземпляр найдены
+// CreateBooking создаёт бронирование, если пользователь, книга и свободный экземпляр найдены
 func (s *bookingService) CreateBooking(userID int, isbn string) (*reservation.Reservation, error) {
-	// Проверка пользователя
-	if _, ok := s.UserRepo.FindUserById(userID); !ok {
+	_, found, err := s.UserRepo.FindUserById(userID)
+	if err != nil {
+		s.Logger.Log("CreateBooking", "ошибка при поиске пользователя: "+err.Error(), 3600)
+		return nil, err
+	}
+	if !found {
 		s.Logger.Log("CreateBooking", "пользователь не найден: userID="+strconv.Itoa(userID), 3600)
 		return nil, ErrUserNotFound
 	}
 
-	// Проверка книги
-	if _, ok := s.BookRepo.FindBookByISBN(isbn); !ok {
+	_, found, err = s.BookRepo.FindBookByISBN(isbn)
+
+	if err != nil {
+		s.Logger.Log("CreateBooking", "ошибка при поиске книги: "+err.Error(), 3600)
+		return nil, err
+	}
+	if !found {
 		s.Logger.Log("CreateBooking", "книга не найдена: isbn="+isbn, 3600)
 		return nil, ErrBookNotFound
 	}
 
-	// Поиск свободных экземпляров книги
-	instances, _ := s.BookInstanceRepo.GetBookInstancesByISBN(isbn)
+	instances, _, err := s.BookInstanceRepo.GetBookInstancesByISBN(isbn)
+	if err != nil {
+		s.Logger.Log("CreateBooking", "ошибка при получении экземпляров книги: "+err.Error(), 3600)
+		return nil, err
+	}
+
 	for _, instance := range instances {
-		// Проверяем, что для данного экземпляра нет активного бронирования со статусом Забронирована или Продлена
-		if !s.ReservationRepo.HasActiveReservation(instance.GetID()) {
-			// Создаем бронирование
+		hasActive, err := s.ReservationRepo.HasActiveReservation(instance.GetID())
+		if err != nil {
+			s.Logger.Log("CreateBooking", "ошибка проверки активных бронирований: "+err.Error(), 3600)
+			return nil, err
+		}
+		if !hasActive {
 			now := time.Now()
 			newReservation := reservation.NewReservation(
 				0,
@@ -72,9 +88,13 @@ func (s *bookingService) CreateBooking(userID int, isbn string) (*reservation.Re
 				userID,
 				int(reservation.StatusBooked),
 				now,
-				now.AddDate(0, 0, 7), // стандартный срок 7 дней
+				now.AddDate(0, 0, 7),
 			)
-			s.ReservationRepo.StoreReservation(newReservation)
+			err = s.ReservationRepo.StoreReservation(newReservation)
+			if err != nil {
+				s.Logger.Log("CreateBooking", "ошибка при создании бронирования: "+err.Error(), 3600)
+				return nil, err
+			}
 			s.Logger.Log("CreateBooking",
 				fmt.Sprintf("создано бронирование userID=%d, isbn=%s, bookInstanceID=%d", userID, isbn, instance.GetID()), 86400)
 			return newReservation, nil
@@ -85,7 +105,7 @@ func (s *bookingService) CreateBooking(userID int, isbn string) (*reservation.Re
 	return nil, ErrNoAvailableInstances
 }
 
-// 2. ExtendBooking продлевает бронирование на ExtensionTime, max 7 дней
+// ExtendBooking продлевает бронирование на ExtensionTime, max 7 дней
 func (s *bookingService) ExtendBooking(reservationID int, extensionDays int) (bool, error) {
 	if extensionDays <= 0 || extensionDays > 7 {
 		s.Logger.Log("ExtendBooking",
@@ -93,8 +113,12 @@ func (s *bookingService) ExtendBooking(reservationID int, extensionDays int) (bo
 		return false, ErrExtensionTooLong
 	}
 
-	res, ok := s.ReservationRepo.FindReservationById(reservationID)
-	if !ok || (res.ReservationStatusID == int(reservation.StatusCancelled) || res.ReservationStatusID == int(reservation.StatusEnded)) {
+	res, found, err := s.ReservationRepo.FindReservationById(reservationID)
+	if err != nil {
+		s.Logger.Log("ExtendBooking", "ошибка при поиске бронирования: "+err.Error(), 3600)
+		return false, err
+	}
+	if !found || (res.ReservationStatusID == int(reservation.StatusCancelled) || res.ReservationStatusID == int(reservation.StatusEnded)) {
 		s.Logger.Log("ExtendBooking",
 			fmt.Sprintf("недопустимый статус бронирования для продления: reservationID=%d", reservationID), 3600)
 		return false, ErrInvalidStatus
@@ -102,7 +126,13 @@ func (s *bookingService) ExtendBooking(reservationID int, extensionDays int) (bo
 
 	res.EndDate = res.EndDate.AddDate(0, 0, extensionDays)
 	res.ReservationStatusID = int(reservation.StatusExtended)
-	success := s.ReservationRepo.UpdateReservationById(reservationID, res)
+
+	success, err := s.ReservationRepo.UpdateReservationById(reservationID, res)
+	if err != nil {
+		s.Logger.Log("ExtendBooking", "ошибка обновления бронирования: "+err.Error(), 3600)
+		return false, err
+	}
+
 	if success {
 		s.Logger.Log("ExtendBooking",
 			fmt.Sprintf("продлено бронирование reservationID=%d на %d дней", reservationID, extensionDays), 86400)
@@ -113,10 +143,14 @@ func (s *bookingService) ExtendBooking(reservationID int, extensionDays int) (bo
 	return success, nil
 }
 
-// 3. CancelBooking отменяет бронирование, если сегодня день начала
+// CancelBooking отменяет бронирование, если сегодня день начала
 func (s *bookingService) CancelBooking(reservationID int) (bool, error) {
-	res, ok := s.ReservationRepo.FindReservationById(reservationID)
-	if !ok {
+	res, found, err := s.ReservationRepo.FindReservationById(reservationID)
+	if err != nil {
+		s.Logger.Log("CancelBooking", "ошибка при поиске бронирования: "+err.Error(), 3600)
+		return false, err
+	}
+	if !found {
 		s.Logger.Log("CancelBooking", "бронирование не найдено: reservationID="+strconv.Itoa(reservationID), 3600)
 		return false, ErrReservationNotFound
 	}
@@ -132,7 +166,11 @@ func (s *bookingService) CancelBooking(reservationID int) (bool, error) {
 	}
 
 	res.ReservationStatusID = int(reservation.StatusCancelled)
-	success := s.ReservationRepo.UpdateReservationById(reservationID, res)
+	success, err := s.ReservationRepo.UpdateReservationById(reservationID, res)
+	if err != nil {
+		s.Logger.Log("CancelBooking", "ошибка обновления бронирования: "+err.Error(), 3600)
+		return false, err
+	}
 	if success {
 		s.Logger.Log("CancelBooking", fmt.Sprintf("отменено бронирование reservationID=%d", reservationID), 86400)
 	} else {
@@ -141,10 +179,14 @@ func (s *bookingService) CancelBooking(reservationID int) (bool, error) {
 	return success, nil
 }
 
-// 4. EndBooking завершает бронирование, если уже не день начала
+// EndBooking завершает бронирование, если уже не день начала
 func (s *bookingService) EndBooking(reservationID int) (bool, error) {
-	res, ok := s.ReservationRepo.FindReservationById(reservationID)
-	if !ok || (res.ReservationStatusID == reservation.StatusCancelled) || (res.ReservationStatusID == int(reservation.StatusEnded)) {
+	res, found, err := s.ReservationRepo.FindReservationById(reservationID)
+	if err != nil {
+		s.Logger.Log("EndBooking", "ошибка при поиске бронирования: "+err.Error(), 3600)
+		return false, err
+	}
+	if !found || res.ReservationStatusID == int(reservation.StatusCancelled) || res.ReservationStatusID == int(reservation.StatusEnded) {
 		s.Logger.Log("EndBooking", fmt.Sprintf("недопустимый статус для завершения: reservationID=%d", reservationID), 3600)
 		return false, ErrInvalidStatus
 	}
@@ -158,7 +200,11 @@ func (s *bookingService) EndBooking(reservationID int) (bool, error) {
 	}
 
 	res.ReservationStatusID = int(reservation.StatusEnded)
-	success := s.ReservationRepo.UpdateReservationById(reservationID, res)
+	success, err := s.ReservationRepo.UpdateReservationById(reservationID, res)
+	if err != nil {
+		s.Logger.Log("EndBooking", "ошибка обновления бронирования: "+err.Error(), 3600)
+		return false, err
+	}
 	if success {
 		s.Logger.Log("EndBooking", fmt.Sprintf("завершено бронирование reservationID=%d", reservationID), 86400)
 	} else {

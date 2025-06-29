@@ -31,7 +31,7 @@ func TestCreateBooking_UserNotFound(t *testing.T) {
 	defer ctrl.Finish()
 	svc, userRepo, _, _, _, _ := newBookingServiceWithMocks(ctrl)
 
-	userRepo.EXPECT().FindUserById(1).Return(nil, false)
+	userRepo.EXPECT().FindUserById(1).Return(nil, false, nil)
 	res, err := (*svc).CreateBooking(1, "978-0-00-000000-0")
 	assert.Nil(t, res)
 	assert.ErrorIs(t, err, booking.ErrUserNotFound)
@@ -42,8 +42,8 @@ func TestCreateBooking_BookNotFound(t *testing.T) {
 	defer ctrl.Finish()
 	svc, userRepo, bookRepo, _, _, _ := newBookingServiceWithMocks(ctrl)
 
-	userRepo.EXPECT().FindUserById(1).Return(&user.User{}, true)
-	bookRepo.EXPECT().FindBookByISBN("isbn").Return(nil, false)
+	userRepo.EXPECT().FindUserById(1).Return(&user.User{}, true, nil)
+	bookRepo.EXPECT().FindBookByISBN("isbn").Return(nil, false, nil)
 
 	res, err := (*svc).CreateBooking(1, "isbn")
 	assert.Nil(t, res)
@@ -55,12 +55,12 @@ func TestCreateBooking_NoAvailableInstances(t *testing.T) {
 	defer ctrl.Finish()
 	svc, userRepo, bookRepo, instanceRepo, resRepo, _ := newBookingServiceWithMocks(ctrl)
 
-	userRepo.EXPECT().FindUserById(1).Return(&user.User{}, true)
-	bookRepo.EXPECT().FindBookByISBN("isbn").Return(&book.Book{}, true)
+	userRepo.EXPECT().FindUserById(1).Return(&user.User{}, true, nil)
+	bookRepo.EXPECT().FindBookByISBN("isbn").Return(&book.Book{}, true, nil)
 	instanceRepo.EXPECT().GetBookInstancesByISBN("isbn").Return([]*book.BookInstance{
 		book.NewBookInstance(101, "isbn"),
-	}, 1)
-	resRepo.EXPECT().HasActiveReservation(101).Return(true)
+	}, 1, nil)
+	resRepo.EXPECT().HasActiveReservation(101).Return(true, nil)
 
 	res, err := (*svc).CreateBooking(1, "isbn")
 	assert.Nil(t, res)
@@ -86,7 +86,7 @@ func TestExtendBooking_InvalidStatus(t *testing.T) {
 			mock: func() {
 				resRepo.EXPECT().
 					FindReservationById(1).
-					Return(reservation.NewReservation(1, 1, 1, reservation.StatusCancelled, time.Now(), time.Now().Add(3*24*time.Hour)), true)
+					Return(reservation.NewReservation(1, 1, 1, reservation.StatusCancelled, time.Now(), time.Now().Add(3*24*time.Hour)), true, nil)
 			},
 			wantOk:  false,
 			wantErr: booking.ErrInvalidStatus,
@@ -97,7 +97,7 @@ func TestExtendBooking_InvalidStatus(t *testing.T) {
 			mock: func() {
 				resRepo.EXPECT().
 					FindReservationById(1).
-					Return(reservation.NewReservation(1, 1, 1, reservation.StatusEnded, time.Now(), time.Now().Add(3*24*time.Hour)), true)
+					Return(reservation.NewReservation(1, 1, 1, reservation.StatusEnded, time.Now(), time.Now().Add(3*24*time.Hour)), true, nil)
 			},
 			wantOk:  false,
 			wantErr: booking.ErrInvalidStatus,
@@ -139,11 +139,11 @@ func TestBookingService_ExtendBooking_Success(t *testing.T) {
 
 				resRepo.EXPECT().
 					FindReservationById(1).
-					Return(res, true)
+					Return(res, true, nil)
 
 				resRepo.EXPECT().
 					UpdateReservationById(1, gomock.Any()).
-					Return(true)
+					Return(true, nil)
 			},
 			wantOk:  true,
 			wantErr: nil,
@@ -156,11 +156,11 @@ func TestBookingService_ExtendBooking_Success(t *testing.T) {
 
 				resRepo.EXPECT().
 					FindReservationById(1).
-					Return(res, true)
+					Return(res, true, nil)
 
 				resRepo.EXPECT().
 					UpdateReservationById(1, gomock.Any()).
-					Return(true)
+					Return(true, nil)
 			},
 			wantOk:  true,
 			wantErr: nil,
@@ -185,7 +185,7 @@ func TestCancelBooking_NotToday(t *testing.T) {
 	svc, _, _, _, resRepo, _ := newBookingServiceWithMocks(ctrl)
 
 	res := reservation.NewReservation(1, 1, 1, int(reservation.StatusBooked), time.Now().AddDate(0, 0, -1), time.Now())
-	resRepo.EXPECT().FindReservationById(1).Return(res, true)
+	resRepo.EXPECT().FindReservationById(1).Return(res, true, nil)
 
 	ok, err := (*svc).CancelBooking(1)
 	assert.False(t, ok)
@@ -199,7 +199,7 @@ func TestEndBooking_Today(t *testing.T) {
 
 	now := time.Now()
 	res := reservation.NewReservation(1, 1, 1, int(reservation.StatusBooked), now, now.AddDate(0, 0, 1))
-	resRepo.EXPECT().FindReservationById(1).Return(res, true)
+	resRepo.EXPECT().FindReservationById(1).Return(res, true, nil)
 
 	ok, err := (*svc).EndBooking(1)
 	assert.False(t, ok)
@@ -216,13 +216,13 @@ func TestCreateBooking_Success(t *testing.T) {
 	isbn := "978-1-56619-909-4"
 	bookInstanceID := 42
 
-	mockUserRepo.EXPECT().FindUserById(userID).Return(&user.User{}, true)
-	mockBookRepo.EXPECT().FindBookByISBN(isbn).Return(&book.Book{}, true)
+	mockUserRepo.EXPECT().FindUserById(userID).Return(&user.User{}, true, nil)
+	mockBookRepo.EXPECT().FindBookByISBN(isbn).Return(&book.Book{}, true, nil)
 	mockInstanceRepo.EXPECT().GetBookInstancesByISBN(isbn).Return([]*book.BookInstance{
 		book.NewBookInstance(bookInstanceID, isbn),
-	}, 1)
-	mockReservationRepo.EXPECT().HasActiveReservation(bookInstanceID).Return(false)
-	mockReservationRepo.EXPECT().StoreReservation(gomock.Any())
+	}, 1, nil)
+	mockReservationRepo.EXPECT().HasActiveReservation(bookInstanceID).Return(false, nil)
+	mockReservationRepo.EXPECT().StoreReservation(gomock.Any()).Return(nil)
 
 	res, err := (*service).CreateBooking(userID, isbn)
 	assert.NoError(t, err)
@@ -249,7 +249,7 @@ func TestCancelBooking_InvalidDate(t *testing.T) {
 	service, _, _, _, mockReservationRepo, _ := newBookingServiceWithMocks(ctrl)
 
 	res := reservation.NewReservation(1, 1, 1, int(reservation.StatusBooked), time.Now().AddDate(0, 0, -1), time.Now().AddDate(0, 0, 6))
-	mockReservationRepo.EXPECT().FindReservationById(1).Return(res, true)
+	mockReservationRepo.EXPECT().FindReservationById(1).Return(res, true, nil)
 
 	success, err := (*service).CancelBooking(1)
 	assert.False(t, success)
@@ -279,11 +279,11 @@ func TestEndBooking_Success(t *testing.T) {
 
 				mockReservationRepo.EXPECT().
 					FindReservationById(1).
-					Return(res, true)
+					Return(res, true, nil)
 
 				mockReservationRepo.EXPECT().
 					UpdateReservationById(1, gomock.Any()).
-					Return(true)
+					Return(true, nil)
 			},
 			wantOk:  true,
 			wantErr: nil,
@@ -296,11 +296,11 @@ func TestEndBooking_Success(t *testing.T) {
 
 				mockReservationRepo.EXPECT().
 					FindReservationById(1).
-					Return(res, true)
+					Return(res, true, nil)
 
 				mockReservationRepo.EXPECT().
 					UpdateReservationById(1, gomock.Any()).
-					Return(true)
+					Return(true, nil)
 			},
 			wantOk:  true,
 			wantErr: nil,
@@ -324,7 +324,7 @@ func TestCancelBooking_ReservationNotFound(t *testing.T) {
 	defer ctrl.Finish()
 	svc, _, _, _, repo, _ := newBookingServiceWithMocks(ctrl)
 
-	repo.EXPECT().FindReservationById(1).Return(nil, false)
+	repo.EXPECT().FindReservationById(1).Return(nil, false, nil)
 
 	success, err := (*svc).CancelBooking(1)
 	assert.False(t, success)
@@ -337,8 +337,8 @@ func TestCancelBooking__Success(t *testing.T) {
 	service, _, _, _, mockReservationRepo, _ := newBookingServiceWithMocks(ctrl)
 
 	res := reservation.NewReservation(1, 1, 1, int(reservation.StatusEnded), time.Now(), time.Now())
-	mockReservationRepo.EXPECT().FindReservationById(1).Return(res, true)
-	mockReservationRepo.EXPECT().UpdateReservationById(1, gomock.Any()).Return(true)
+	mockReservationRepo.EXPECT().FindReservationById(1).Return(res, true, nil)
+	mockReservationRepo.EXPECT().UpdateReservationById(1, gomock.Any()).Return(true, nil)
 
 	success, err := (*service).CancelBooking(1)
 	assert.True(t, success)
@@ -364,7 +364,7 @@ func TestEndBooking__InvalidStatus(t *testing.T) {
 			mock: func() {
 				mockReservationRepo.EXPECT().
 					FindReservationById(1).
-					Return(reservation.NewReservation(1, 1, 1, reservation.StatusCancelled, time.Now().Add(-3*24*time.Hour), time.Now().Add(3*24*time.Hour)), true)
+					Return(reservation.NewReservation(1, 1, 1, reservation.StatusCancelled, time.Now().Add(-3*24*time.Hour), time.Now().Add(3*24*time.Hour)), true, nil)
 			},
 			wantOk:  false,
 			wantErr: booking.ErrInvalidStatus,
@@ -375,7 +375,7 @@ func TestEndBooking__InvalidStatus(t *testing.T) {
 			mock: func() {
 				mockReservationRepo.EXPECT().
 					FindReservationById(1).
-					Return(reservation.NewReservation(1, 1, 1, reservation.StatusEnded, time.Now().Add(-3*24*time.Hour), time.Now().Add(3*24*time.Hour)), true)
+					Return(reservation.NewReservation(1, 1, 1, reservation.StatusEnded, time.Now().Add(-3*24*time.Hour), time.Now().Add(3*24*time.Hour)), true, nil)
 			},
 			wantOk:  false,
 			wantErr: booking.ErrInvalidStatus,

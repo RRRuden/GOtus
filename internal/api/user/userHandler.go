@@ -25,6 +25,10 @@ type UpdateUserRequest struct {
 	Email string `json:"email"`
 }
 
+type ErrorResponse struct {
+	Message string `json:"message"`
+}
+
 // CreateUser godoc
 // @Summary      Создать пользователя
 // @Description  Добавляет нового пользователя
@@ -33,18 +37,22 @@ type UpdateUserRequest struct {
 // @Produce      json
 // @Param        user body CreateUserRequest true "Пользователь"
 // @Success      201
-// @Failure      400 {string} string "invalid request"
+// @Failure      400 {object} ErrorResponse
+// @Failure      500 {object} ErrorResponse
 // @Router       /api/user [post]
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var req CreateUserRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Неверный формат запроса")
 		return
 	}
 
 	u := user.NewUser(req.ID, req.Name, req.Email)
-	h.Repo.StoreUser(u)
+	if err := h.Repo.StoreUser(u); err != nil {
+		writeError(w, http.StatusInternalServerError, "Ошибка при сохранении пользователя")
+		return
+	}
 	w.WriteHeader(http.StatusCreated)
 }
 
@@ -54,17 +62,22 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 // @Tags         user
 // @Produce      json
 // @Success      200 {array} user.User
+// @Failure      500 {object} ErrorResponse
 // @Router       /api/users [get]
 func (h *UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) {
-	res, _ := h.Repo.GetUsers()
-	json.NewEncoder(w).Encode(res)
+	res, _, err := h.Repo.GetUsers()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Ошибка при получении пользователей")
+		return
+	}
+	writeJSON(w, res)
 }
 
 func (h *UserHandler) UserByIDHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := strings.TrimPrefix(r.URL.Path, "/api/user/")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "invalid reservation id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Некорректный ID")
 		return
 	}
 
@@ -76,7 +89,7 @@ func (h *UserHandler) UserByIDHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodDelete:
 		h.DeleteUser(w, r, id)
 	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 	}
 }
 
@@ -87,15 +100,21 @@ func (h *UserHandler) UserByIDHandler(w http.ResponseWriter, r *http.Request) {
 // @Produce      json
 // @Param        id path int true "ID пользователя"
 // @Success      200 {object} user.User
-// @Failure      404 {string} string "not found"
+// @Failure      400 {object} ErrorResponse
+// @Failure      404 {object} ErrorResponse
+// @Failure      500 {object} ErrorResponse
 // @Router       /api/user/{id} [get]
 func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request, id int) {
-	res, ok := h.Repo.FindUserById(id)
-	if !ok {
-		http.NotFound(w, r)
+	res, _, err := h.Repo.FindUserById(id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Ошибка при получении пользователя")
 		return
 	}
-	json.NewEncoder(w).Encode(res)
+	if res == nil {
+		writeError(w, http.StatusNotFound, "Пользователь не найден")
+		return
+	}
+	writeJSON(w, res)
 }
 
 // UpdateUser godoc
@@ -107,20 +126,26 @@ func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request, id int
 // @Param        id path int true "ID пользователя"
 // @Param        user body UpdateUserRequest true "Новые данные пользователя"
 // @Success      200
-// @Failure      400 {string} string "invalid request"
-// @Failure      404 {string} string "not found"
+// @Failure      400 {object} ErrorResponse
+// @Failure      404 {object} ErrorResponse
+// @Failure      500 {object} ErrorResponse
 // @Router       /api/user/{id} [put]
 func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request, id int) {
 	var req UpdateUserRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Неверный формат запроса")
 		return
 	}
 
 	u := user.NewUser(req.ID, req.Name, req.Email)
-	if !h.Repo.UpdateUserById(id, u) {
-		http.NotFound(w, r)
+	ok, err := h.Repo.UpdateUserById(id, u)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Ошибка при обновлении пользователя")
+		return
+	}
+	if !ok {
+		writeError(w, http.StatusNotFound, "Пользователь не найден")
 		return
 	}
 	w.WriteHeader(http.StatusOK)
@@ -132,12 +157,31 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request, id int)
 // @Tags         user
 // @Param        id path int true "ID пользователя"
 // @Success      200
-// @Failure      404 {string} string "not found"
+// @Failure      404 {object} ErrorResponse
+// @Failure      500 {object} ErrorResponse
 // @Router       /api/user/{id} [delete]
 func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request, id int) {
-	if !h.Repo.DeleteUserById(id) {
-		http.NotFound(w, r)
+	ok, err := h.Repo.DeleteUserById(id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Ошибка при удалении пользователя")
+		return
+	}
+	if !ok {
+		writeError(w, http.StatusNotFound, "Пользователь не найден")
 		return
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+// Вспомогательные функции
+
+func writeError(w http.ResponseWriter, status int, msg string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(ErrorResponse{Message: msg})
+}
+
+func writeJSON(w http.ResponseWriter, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(v)
 }

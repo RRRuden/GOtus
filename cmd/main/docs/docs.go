@@ -44,9 +44,15 @@ const docTemplate = `{
                         "description": "Created"
                     },
                     "400": {
-                        "description": "invalid request",
+                        "description": "Bad Request",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/internal_api_book.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_book.ErrorResponse"
                         }
                     }
                 }
@@ -79,9 +85,15 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "not found",
+                        "description": "Not Found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/internal_api_book.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_book.ErrorResponse"
                         }
                     }
                 }
@@ -118,15 +130,21 @@ const docTemplate = `{
                         "description": "OK"
                     },
                     "400": {
-                        "description": "invalid request",
+                        "description": "Bad Request",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/internal_api_book.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "not found",
+                        "description": "Not Found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/internal_api_book.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_book.ErrorResponse"
                         }
                     }
                 }
@@ -151,9 +169,15 @@ const docTemplate = `{
                         "description": "OK"
                     },
                     "404": {
-                        "description": "not found",
+                        "description": "Not Found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/internal_api_book.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_book.ErrorResponse"
                         }
                     }
                 }
@@ -351,9 +375,15 @@ const docTemplate = `{
                         "description": "Created"
                     },
                     "400": {
-                        "description": "invalid request",
+                        "description": "Bad Request",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/internal_api_book.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_book.ErrorResponse"
                         }
                     }
                 }
@@ -386,9 +416,15 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "not found",
+                        "description": "Not Found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/internal_api_book.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_book.ErrorResponse"
                         }
                     }
                 }
@@ -428,15 +464,21 @@ const docTemplate = `{
                         "description": "OK"
                     },
                     "400": {
-                        "description": "invalid request",
+                        "description": "Bad Request",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/internal_api_book.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "not found",
+                        "description": "Not Found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/internal_api_book.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_book.ErrorResponse"
                         }
                     }
                 }
@@ -461,9 +503,15 @@ const docTemplate = `{
                         "description": "OK"
                     },
                     "404": {
-                        "description": "not found",
+                        "description": "Not Found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/internal_api_book.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_book.ErrorResponse"
                         }
                     }
                 }
@@ -488,6 +536,12 @@ const docTemplate = `{
                                 "$ref": "#/definitions/gotus_internal_model_book.BookInstance"
                             }
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_book.ErrorResponse"
+                        }
                     }
                 }
             }
@@ -510,6 +564,12 @@ const docTemplate = `{
                             "items": {
                                 "$ref": "#/definitions/gotus_internal_model_book.Book"
                             }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_book.ErrorResponse"
                         }
                     }
                 }
@@ -544,9 +604,15 @@ const docTemplate = `{
                         "description": "Created"
                     },
                     "400": {
-                        "description": "invalid request",
+                        "description": "Bad Request",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/internal_api_reservation.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_reservation.ErrorResponse"
                         }
                     }
                 }
@@ -579,9 +645,15 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "not found",
+                        "description": "Not Found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/internal_api_reservation.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_reservation.ErrorResponse"
                         }
                     }
                 }
@@ -621,15 +693,21 @@ const docTemplate = `{
                         "description": "OK"
                     },
                     "400": {
-                        "description": "invalid request",
+                        "description": "Bad Request",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/internal_api_reservation.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "not found",
+                        "description": "Not Found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/internal_api_reservation.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_reservation.ErrorResponse"
                         }
                     }
                 }
@@ -654,9 +732,15 @@ const docTemplate = `{
                         "description": "OK"
                     },
                     "404": {
-                        "description": "not found",
+                        "description": "Not Found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/internal_api_reservation.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_reservation.ErrorResponse"
                         }
                     }
                 }
@@ -680,6 +764,12 @@ const docTemplate = `{
                             "items": {
                                 "$ref": "#/definitions/gotus_internal_model_reservation.Reservation"
                             }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_reservation.ErrorResponse"
                         }
                     }
                 }
@@ -714,9 +804,15 @@ const docTemplate = `{
                         "description": "Created"
                     },
                     "400": {
-                        "description": "invalid request",
+                        "description": "Bad Request",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/internal_api_user.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_user.ErrorResponse"
                         }
                     }
                 }
@@ -748,10 +844,22 @@ const docTemplate = `{
                             "$ref": "#/definitions/gotus_internal_model_user.User"
                         }
                     },
-                    "404": {
-                        "description": "not found",
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/internal_api_user.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_user.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_user.ErrorResponse"
                         }
                     }
                 }
@@ -791,15 +899,21 @@ const docTemplate = `{
                         "description": "OK"
                     },
                     "400": {
-                        "description": "invalid request",
+                        "description": "Bad Request",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/internal_api_user.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "not found",
+                        "description": "Not Found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/internal_api_user.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_user.ErrorResponse"
                         }
                     }
                 }
@@ -824,9 +938,15 @@ const docTemplate = `{
                         "description": "OK"
                     },
                     "404": {
-                        "description": "not found",
+                        "description": "Not Found",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/internal_api_user.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_user.ErrorResponse"
                         }
                     }
                 }
@@ -851,6 +971,12 @@ const docTemplate = `{
                                 "$ref": "#/definitions/gotus_internal_model_user.User"
                             }
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_user.ErrorResponse"
+                        }
                     }
                 }
             }
@@ -860,13 +986,16 @@ const docTemplate = `{
         "gotus_internal_model_book.Book": {
             "type": "object",
             "properties": {
-                "author": {
+                "Author": {
                     "type": "string"
                 },
-                "title": {
+                "Isbn": {
                     "type": "string"
                 },
-                "year": {
+                "Title": {
+                    "type": "string"
+                },
+                "Year": {
                     "type": "integer"
                 }
             }
@@ -874,27 +1003,33 @@ const docTemplate = `{
         "gotus_internal_model_book.BookInstance": {
             "type": "object",
             "properties": {
-                "isbn": {
+                "ISBN": {
                     "type": "string"
+                },
+                "Id": {
+                    "type": "integer"
                 }
             }
         },
         "gotus_internal_model_reservation.Reservation": {
             "type": "object",
             "properties": {
-                "bookInstanceID": {
+                "BookInstanceID": {
                     "type": "integer"
                 },
-                "endDate": {
+                "EndDate": {
                     "type": "string"
                 },
-                "reservationStatusID": {
+                "Id": {
                     "type": "integer"
                 },
-                "startDate": {
+                "ReservationStatusID": {
+                    "type": "integer"
+                },
+                "StartDate": {
                     "type": "string"
                 },
-                "userID": {
+                "UserID": {
                     "type": "integer"
                 }
             }
@@ -902,10 +1037,13 @@ const docTemplate = `{
         "gotus_internal_model_user.User": {
             "type": "object",
             "properties": {
-                "email": {
+                "Email": {
                     "type": "string"
                 },
-                "name": {
+                "Id": {
+                    "type": "integer"
+                },
+                "Name": {
                     "type": "string"
                 }
             }
@@ -935,6 +1073,14 @@ const docTemplate = `{
                 },
                 "year": {
                     "type": "integer"
+                }
+            }
+        },
+        "internal_api_book.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
                 }
             }
         },
@@ -1013,6 +1159,14 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_api_reservation.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_api_reservation.UpdateReservationRequest": {
             "type": "object",
             "properties": {
@@ -1043,6 +1197,14 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_api_user.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
                     "type": "string"
                 }
             }

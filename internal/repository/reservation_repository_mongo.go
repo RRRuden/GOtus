@@ -17,46 +17,76 @@ func NewMongoReservationRepository(db *mongo.Database) ReservationRepository {
 	return &mongoReservationRepository{collection: db.Collection("reservations")}
 }
 
-func (r *mongoReservationRepository) StoreReservation(res *reservation.Reservation) {
+func (r *mongoReservationRepository) StoreReservation(res *reservation.Reservation) error {
 	if res.Id == 0 {
-		newID, _ := r.getNextID()
+		newID, err := r.getNextID()
+		if err != nil {
+			return err
+		}
 		res.SetID(newID)
 	}
 
-	r.collection.InsertOne(context.TODO(), res)
+	_, err := r.collection.InsertOne(context.TODO(), res)
+	return err
 }
 
-func (r *mongoReservationRepository) GetReservations() ([]*reservation.Reservation, int) {
-	cursor, _ := r.collection.Find(context.TODO(), bson.M{})
+func (r *mongoReservationRepository) GetReservations() ([]*reservation.Reservation, int, error) {
+	cursor, err := r.collection.Find(context.TODO(), bson.M{})
+	if err != nil {
+		return nil, 0, err
+	}
+	defer cursor.Close(context.TODO())
+
 	var result []*reservation.Reservation
 	for cursor.Next(context.TODO()) {
 		var res reservation.Reservation
-		cursor.Decode(&res)
+		if err := cursor.Decode(&res); err != nil {
+			return nil, 0, err
+		}
 		result = append(result, &res)
 	}
-	return result, len(result)
+	if err := cursor.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	return result, len(result), nil
 }
 
-func (r *mongoReservationRepository) UpdateReservationById(id int, updated *reservation.Reservation) bool {
-	res, _ := r.collection.UpdateOne(context.TODO(), bson.M{"id": id}, bson.M{"$set": updated})
-	return res.ModifiedCount > 0
+func (r *mongoReservationRepository) UpdateReservationById(id int, updated *reservation.Reservation) (bool, error) {
+	res, err := r.collection.UpdateOne(context.TODO(), bson.M{"id": id}, bson.M{"$set": updated})
+	if err != nil {
+		return false, err
+	}
+	return res.ModifiedCount > 0, nil
 }
 
-func (r *mongoReservationRepository) FindReservationById(id int) (*reservation.Reservation, bool) {
+func (r *mongoReservationRepository) FindReservationById(id int) (*reservation.Reservation, bool, error) {
 	var res reservation.Reservation
 	err := r.collection.FindOne(context.TODO(), bson.M{"id": id}).Decode(&res)
-	return &res, err == nil
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+	return &res, true, nil
 }
 
-func (r *mongoReservationRepository) DeleteReservationById(id int) bool {
-	res, _ := r.collection.DeleteOne(context.TODO(), bson.M{"id": id})
-	return res.DeletedCount > 0
+func (r *mongoReservationRepository) DeleteReservationById(id int) (bool, error) {
+	res, err := r.collection.DeleteOne(context.TODO(), bson.M{"id": id})
+	if err != nil {
+		return false, err
+	}
+	return res.DeletedCount > 0, nil
 }
 
-func (r *mongoReservationRepository) HasActiveReservation(bookInstanceID int) bool {
+func (r *mongoReservationRepository) HasActiveReservation(bookInstanceID int) (bool, error) {
 	filter := bson.M{"bookinstanceid": bookInstanceID, "reservationstatusid": bson.M{"$in": []int{1, 2}}} // 1: Booked, 2: Extended
-	count, _ := r.collection.CountDocuments(context.TODO(), filter)
-	return count > 0
+	count, err := r.collection.CountDocuments(context.TODO(), filter)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 func (r *mongoReservationRepository) getNextID() (int, error) {
