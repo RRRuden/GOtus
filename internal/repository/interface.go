@@ -43,6 +43,6 @@ type UserRepository interface {
 	DeleteUserById(id int) (bool, error)
 }
 
-type EmailMessage interface {
+type EmailMessageRepository interface {
 	InsertMessage(m *message.Message) error
 }

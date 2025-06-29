@@ -14,7 +14,6 @@ type BookInstanceHandler struct {
 }
 
 type CreateBookInstanceRequest struct {
-	ID   int    `json:"id"`
 	ISBN string `json:"isbn"`
 }
 
@@ -42,7 +41,7 @@ func (h *BookInstanceHandler) CreateBookInstance(w http.ResponseWriter, r *http.
 		return
 	}
 
-	res := book.NewBookInstance(req.ID, req.ISBN)
+	res := book.NewBookInstance(0, req.ISBN)
 	if err := h.Repo.StoreBookInstance(res); err != nil {
 		writeError(w, http.StatusInternalServerError, "Ошибка при создании экземпляра книги")
 		return

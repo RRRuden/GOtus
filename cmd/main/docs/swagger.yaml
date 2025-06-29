@@ -43,8 +43,6 @@ definitions:
     type: object
   internal_api_book.CreateBookInstanceRequest:
     properties:
-      id:
-        type: integer
       isbn:
         type: string
     type: object
@@ -103,8 +101,6 @@ definitions:
         type: integer
       end_date:
         type: string
-      id:
-        type: integer
       start_date:
         type: string
       status_id:
@@ -134,8 +130,6 @@ definitions:
     properties:
       email:
         type: string
-      id:
-        type: integer
       name:
         type: string
     type: object

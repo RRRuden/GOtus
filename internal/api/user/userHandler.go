@@ -14,7 +14,6 @@ type UserHandler struct {
 }
 
 type CreateUserRequest struct {
-	ID    int    `json:"id"`
 	Name  string `json:"name"`
 	Email string `json:"email"`
 }
@@ -48,7 +47,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u := user.NewUser(req.ID, req.Name, req.Email)
+	u := user.NewUser(0, req.Name, req.Email)
 	if err := h.Repo.StoreUser(u); err != nil {
 		writeError(w, http.StatusInternalServerError, "Ошибка при сохранении пользователя")
 		return

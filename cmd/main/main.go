@@ -6,10 +6,11 @@ package main
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	_ "gotus/cmd/main/docs" // Импорт с побочным эффектом, чтобы инициализировать Swagger
 	router "gotus/internal/api"
 	"gotus/internal/config"
-	"gotus/internal/generator"
 	grpc "gotus/internal/grpc/server"
 	"gotus/internal/logger"
 	"gotus/internal/repository"
@@ -21,6 +22,7 @@ import (
 	"sync"
 	"syscall"
 
+	_ "github.com/lib/pq"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -38,25 +40,28 @@ func RunService() {
 	wg.Add(2)
 
 	config := config.LoadConfig("././config/config.yaml")
-	ctx := context.Background()
-	// MongoDB
-	mongoClient, err := mongo.NewClient(options.Client().ApplyURI(config.MongoDB.URI))
-	if err != nil {
-		log.Fatalf("Ошибка создания Mongo клиента: %v", err)
-	}
-	if err := mongoClient.Connect(ctx); err != nil {
-		log.Fatalf("Ошибка подключения к MongoDB: %v", err)
-	}
-	mongoDB := mongoClient.Database(config.MongoDB.Database)
 
-	bookRepo := repository.NewMongoBookRepository(mongoDB)
-	bookInstanceRepo := repository.NewMongoBookInstanceRepository(mongoDB)
-	reservationRepo := repository.NewMongoReservationRepository(mongoDB)
-	userRepo := repository.NewMongoUserRepository(mongoDB)
+	pgCfg := config.PostgreSQL
+	connStr := fmt.Sprintf(
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+		pgCfg.Host, pgCfg.Port, pgCfg.User, pgCfg.Password, pgCfg.DBName, pgCfg.SSLMode,
+	)
+
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		log.Fatalf("Ошибка подключения к PostgreSQL: %v", err)
+	}
+	if err := db.Ping(); err != nil {
+		log.Fatalf("PostgreSQL не отвечает: %v", err)
+	}
+	defer db.Close()
+
+	bookRepo := repository.NewBookPostgresRepo(db)
+	bookInstanceRepo := repository.NewBookInstancePostgresRepo(db)
+	reservationRepo := repository.NewReservationPostgresRepo(db)
+	userRepo := repository.NewUserPostgresRepo(db)
 	logger := logger.NewRedisLogger(config.Redis.Addr, config.Redis.Password, config.Redis.DB)
 	bookingSerivce := booking.NewBookingService(userRepo, bookRepo, bookInstanceRepo, reservationRepo, logger)
-
-	generator.GenerateInitialDataForMongoDb(userRepo, bookRepo, bookInstanceRepo, reservationRepo)
 
 	grpcAddr := config.BookingServer.Host + ":" + config.BookingServer.Port
 
@@ -93,8 +98,18 @@ func RunService() {
 	// Завершаем gRPC-сервер
 	grpc.StopGRPCServer()
 
-	mongoClient.Disconnect(ctx)
-
 	wg.Wait() // Ожидание завершения всех горутин
 	log.Println("Все горутины завершены. Приложение остановлено.")
+}
+
+func GetMongoDb(config config.MongoDBConfig, ctx context.Context) *mongo.Database {
+	mongoClient, err := mongo.NewClient(options.Client().ApplyURI(config.URI))
+	if err != nil {
+		log.Fatalf("Ошибка создания Mongo клиента: %v", err)
+	}
+	if err := mongoClient.Connect(ctx); err != nil {
+		log.Fatalf("Ошибка подключения к MongoDB: %v", err)
+	}
+	mongoDB := mongoClient.Database(config.Database)
+	return mongoDB
 }

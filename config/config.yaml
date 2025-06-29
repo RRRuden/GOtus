@@ -16,3 +16,11 @@ redis:
   addr: "localhost:6381"
   password: ""
   db: 0
+
+postgresql:
+  host: "localhost"
+  port: 5432
+  user: "myuser"
+  password: "mypassword"
+  dbname: "mydb"
+  sslmode: "disable"

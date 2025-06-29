@@ -1043,9 +1043,6 @@
         "internal_api_book.CreateBookInstanceRequest": {
             "type": "object",
             "properties": {
-                "id": {
-                    "type": "integer"
-                },
                 "isbn": {
                     "type": "string"
                 }
@@ -1137,9 +1134,6 @@
                 "end_date": {
                     "type": "string"
                 },
-                "id": {
-                    "type": "integer"
-                },
                 "start_date": {
                     "type": "string"
                 },
@@ -1184,9 +1178,6 @@
             "properties": {
                 "email": {
                     "type": "string"
-                },
-                "id": {
-                    "type": "integer"
                 },
                 "name": {
                     "type": "string"

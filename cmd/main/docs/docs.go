@@ -1051,9 +1051,6 @@ const docTemplate = `{
         "internal_api_book.CreateBookInstanceRequest": {
             "type": "object",
             "properties": {
-                "id": {
-                    "type": "integer"
-                },
                 "isbn": {
                     "type": "string"
                 }
@@ -1145,9 +1142,6 @@ const docTemplate = `{
                 "end_date": {
                     "type": "string"
                 },
-                "id": {
-                    "type": "integer"
-                },
                 "start_date": {
                     "type": "string"
                 },
@@ -1192,9 +1186,6 @@ const docTemplate = `{
             "properties": {
                 "email": {
                     "type": "string"
-                },
-                "id": {
-                    "type": "integer"
                 },
                 "name": {
                     "type": "string"

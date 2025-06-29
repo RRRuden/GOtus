@@ -28,6 +28,15 @@ type RedisConfig struct {
 	DB       int    `yaml:"db"`
 }
 
+type PostgresConfig struct {
+	Host     string `yaml:"host"`
+	Port     int    `yaml:"port"`
+	User     string `yaml:"user"`
+	Password string `yaml:"password"`
+	DBName   string `yaml:"dbname"`
+	SSLMode  string `yaml:"sslmode"`
+}
+
 type Config struct {
 	Env           string              `yaml:"env"`
 	StoragePath   string              `yaml:"storage_path"`
@@ -35,6 +44,7 @@ type Config struct {
 	BookingServer BookingServerConfig `yaml:"booking_server"`
 	MongoDB       MongoDBConfig       `yaml:"mongodb"`
 	Redis         RedisConfig         `yaml:"redis"`
+	PostgreSQL    PostgresConfig      `yaml:"postgresql"`
 }
 
 func LoadConfig(path string) *Config {

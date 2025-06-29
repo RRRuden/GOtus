@@ -15,7 +15,6 @@ type ReservationHandler struct {
 }
 
 type CreateReservationRequest struct {
-	ID             int    `json:"id"`
 	BookInstanceID int    `json:"book_instance_id"`
 	UserID         int    `json:"user_id"`
 	StatusID       int    `json:"status_id"`
@@ -75,7 +74,7 @@ func (h *ReservationHandler) CreateReservation(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	res := reservation.NewReservation(req.ID, req.BookInstanceID, req.UserID, req.StatusID, start, end)
+	res := reservation.NewReservation(0, req.BookInstanceID, req.UserID, req.StatusID, start, end)
 	if err := h.Repo.StoreReservation(res); err != nil {
 		writeError(w, http.StatusInternalServerError, "Ошибка при сохранении брони")
 		return
