@@ -322,11 +322,12 @@ func (mr *MockReservationRepositoryMockRecorder) HasActiveReservation(bookInstan
 }
 
 // StoreReservation mocks base method.
-func (m *MockReservationRepository) StoreReservation(r *reservation.Reservation) error {
+func (m *MockReservationRepository) StoreReservation(r *reservation.Reservation) (int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StoreReservation", r)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // StoreReservation indicates an expected call of StoreReservation.
@@ -466,32 +467,32 @@ func (mr *MockUserRepositoryMockRecorder) UpdateUserById(id, updatedUser any) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUserById", reflect.TypeOf((*MockUserRepository)(nil).UpdateUserById), id, updatedUser)
 }
 
-// MockEmailMessage is a mock of EmailMessage interface.
-type MockEmailMessage struct {
+// MockEmailMessageRepository is a mock of EmailMessageRepository interface.
+type MockEmailMessageRepository struct {
 	ctrl     *gomock.Controller
-	recorder *MockEmailMessageMockRecorder
+	recorder *MockEmailMessageRepositoryMockRecorder
 	isgomock struct{}
 }
 
-// MockEmailMessageMockRecorder is the mock recorder for MockEmailMessage.
-type MockEmailMessageMockRecorder struct {
-	mock *MockEmailMessage
+// MockEmailMessageRepositoryMockRecorder is the mock recorder for MockEmailMessageRepository.
+type MockEmailMessageRepositoryMockRecorder struct {
+	mock *MockEmailMessageRepository
 }
 
-// NewMockEmailMessage creates a new mock instance.
-func NewMockEmailMessage(ctrl *gomock.Controller) *MockEmailMessage {
-	mock := &MockEmailMessage{ctrl: ctrl}
-	mock.recorder = &MockEmailMessageMockRecorder{mock}
+// NewMockEmailMessageRepository creates a new mock instance.
+func NewMockEmailMessageRepository(ctrl *gomock.Controller) *MockEmailMessageRepository {
+	mock := &MockEmailMessageRepository{ctrl: ctrl}
+	mock.recorder = &MockEmailMessageRepositoryMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockEmailMessage) EXPECT() *MockEmailMessageMockRecorder {
+func (m *MockEmailMessageRepository) EXPECT() *MockEmailMessageRepositoryMockRecorder {
 	return m.recorder
 }
 
 // InsertMessage mocks base method.
-func (m_2 *MockEmailMessage) InsertMessage(m *message.Message) error {
+func (m_2 *MockEmailMessageRepository) InsertMessage(m *message.Message) error {
 	m_2.ctrl.T.Helper()
 	ret := m_2.ctrl.Call(m_2, "InsertMessage", m)
 	ret0, _ := ret[0].(error)
@@ -499,7 +500,7 @@ func (m_2 *MockEmailMessage) InsertMessage(m *message.Message) error {
 }
 
 // InsertMessage indicates an expected call of InsertMessage.
-func (mr *MockEmailMessageMockRecorder) InsertMessage(m any) *gomock.Call {
+func (mr *MockEmailMessageRepositoryMockRecorder) InsertMessage(m any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertMessage", reflect.TypeOf((*MockEmailMessage)(nil).InsertMessage), m)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertMessage", reflect.TypeOf((*MockEmailMessageRepository)(nil).InsertMessage), m)
 }

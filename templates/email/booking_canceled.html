@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Бронирование отменено</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f6f6f6; padding: 20px; }
+    .email-box { background: #ffffff; padding: 20px; border-radius: 8px; max-width: 600px; margin: auto; }
+    h1 { color: #e74c3c; }
+    p { font-size: 14px; color: #333; }
+    .footer { margin-top: 30px; font-size: 12px; color: #888; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="email-box">
+    <h1>Бронирование отменено</h1>
+    <p>Здравствуйте!</p>
+    <p>Ваше бронирование книги <strong>{{.BookTitle}}</strong> было отменено.</p>
+    <p>Если это произошло по ошибке, вы можете забронировать книгу повторно.</p>
+    <div class="footer">
+      С уважением, команда GOtus
+    </div>
+  </div>
+</body>
+</html>

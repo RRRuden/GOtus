@@ -9,6 +9,8 @@ import (
 	"gotus/internal/logger"
 	"gotus/internal/model/reservation"
 	"gotus/internal/repository"
+	emailsender "gotus/internal/service/email_sender"
+	emailtemplater "gotus/internal/service/email_templater"
 )
 
 type bookingService struct {
@@ -17,6 +19,8 @@ type bookingService struct {
 	BookInstanceRepo repository.BookInstanceRepository
 	ReservationRepo  repository.ReservationRepository
 	Logger           logger.Logger
+	templater        emailtemplater.EmailTemplater
+	sender           emailsender.EmailSender
 }
 
 var (
@@ -35,19 +39,23 @@ func NewBookingService(
 	bookRepo repository.BookRepository,
 	bookInstanceRepo repository.BookInstanceRepository,
 	reservationRepo repository.ReservationRepository,
-	logger logger.Logger) Service {
+	logger logger.Logger,
+	templaer emailtemplater.EmailTemplater,
+	sender emailsender.EmailSender) Service {
 	return &bookingService{
 		UserRepo:         userRepo,
 		BookRepo:         bookRepo,
 		BookInstanceRepo: bookInstanceRepo,
 		ReservationRepo:  reservationRepo,
 		Logger:           logger,
+		sender:           sender,
+		templater:        templaer,
 	}
 }
 
 // CreateBooking создаёт бронирование, если пользователь, книга и свободный экземпляр найдены
 func (s *bookingService) CreateBooking(userID int, isbn string) (*reservation.Reservation, error) {
-	_, found, err := s.UserRepo.FindUserById(userID)
+	user, found, err := s.UserRepo.FindUserById(userID)
 	if err != nil {
 		s.Logger.Log("CreateBooking", "ошибка при поиске пользователя: "+err.Error(), 3600)
 		return nil, err
@@ -90,13 +98,29 @@ func (s *bookingService) CreateBooking(userID int, isbn string) (*reservation.Re
 				now,
 				now.AddDate(0, 0, 7),
 			)
-			err = s.ReservationRepo.StoreReservation(newReservation)
+
+			newReservation.Id, err = s.ReservationRepo.StoreReservation(newReservation)
 			if err != nil {
 				s.Logger.Log("CreateBooking", "ошибка при создании бронирования: "+err.Error(), 3600)
 				return nil, err
 			}
 			s.Logger.Log("CreateBooking",
 				fmt.Sprintf("создано бронирование userID=%d, isbn=%s, bookInstanceID=%d", userID, isbn, instance.GetID()), 86400)
+
+			body, err := s.templater.GetBookingCreatedEmail(newReservation.Id)
+
+			if err != nil {
+				s.Logger.Log("CreateBooking", "ошибка при генерации письма о бронировании: "+err.Error(), 3600)
+				return nil, err
+			}
+
+			err = s.sender.SendEmail(user.Email, "Ваше бронирование создано", body)
+
+			if err != nil {
+				s.Logger.Log("CreateBooking", "ошибка при отправке письма о бронировании: "+err.Error(), 3600)
+				return nil, err
+			}
+
 			return newReservation, nil
 		}
 	}
@@ -136,6 +160,13 @@ func (s *bookingService) ExtendBooking(reservationID int, extensionDays int) (bo
 	if success {
 		s.Logger.Log("ExtendBooking",
 			fmt.Sprintf("продлено бронирование reservationID=%d на %d дней", reservationID, extensionDays), 86400)
+		body, err := s.templater.GetBookingExtendedEmail(reservationID)
+		if err == nil {
+			user, _, _ := s.UserRepo.FindUserById(res.UserID)
+			if user != nil {
+				_ = s.sender.SendEmail(user.Email, "Ваше бронирование продлено", body)
+			}
+		}
 	} else {
 		s.Logger.Log("ExtendBooking",
 			fmt.Sprintf("ошибка обновления бронирования reservationID=%d", reservationID), 3600)
@@ -171,8 +202,16 @@ func (s *bookingService) CancelBooking(reservationID int) (bool, error) {
 		s.Logger.Log("CancelBooking", "ошибка обновления бронирования: "+err.Error(), 3600)
 		return false, err
 	}
+
 	if success {
 		s.Logger.Log("CancelBooking", fmt.Sprintf("отменено бронирование reservationID=%d", reservationID), 86400)
+		body, err := s.templater.GetBookingCanceledEmail(reservationID)
+		if err == nil {
+			user, _, _ := s.UserRepo.FindUserById(res.UserID)
+			if user != nil {
+				_ = s.sender.SendEmail(user.Email, "Ваше бронирование отменено", body)
+			}
+		}
 	} else {
 		s.Logger.Log("CancelBooking", fmt.Sprintf("ошибка обновления бронирования reservationID=%d", reservationID), 3600)
 	}
@@ -207,6 +246,13 @@ func (s *bookingService) EndBooking(reservationID int) (bool, error) {
 	}
 	if success {
 		s.Logger.Log("EndBooking", fmt.Sprintf("завершено бронирование reservationID=%d", reservationID), 86400)
+		body, err := s.templater.GetBookingEndedEmail(reservationID)
+		if err == nil {
+			user, _, _ := s.UserRepo.FindUserById(res.UserID)
+			if user != nil {
+				_ = s.sender.SendEmail(user.Email, "Ваше бронирование завершено", body)
+			}
+		}
 	} else {
 		s.Logger.Log("EndBooking", fmt.Sprintf("ошибка обновления бронирования reservationID=%d", reservationID), 3600)
 	}

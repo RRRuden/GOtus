@@ -14,16 +14,26 @@ func NewReservationPostgresRepo(db *sql.DB) ReservationRepository {
 	return &ReservationPostgresRepo{db: db}
 }
 
-func (r *ReservationPostgresRepo) StoreReservation(res *reservation.Reservation) error {
+func (r *ReservationPostgresRepo) StoreReservation(res *reservation.Reservation) (int, error) {
 	query := `
 		INSERT INTO reservations (book_instance_id, user_id, reservation_status_id, start_date, end_date)
-		VALUES ($1, $2, $3, $4, $5)`
-	_, err := r.db.Exec(query,
-		res.BookInstanceID, res.UserID, res.ReservationStatusID,
-		res.StartDate.Format("2006-01-02"),
-		res.EndDate.Format("2006-01-02"),
-	)
-	return err
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id;`
+	var id int
+	err := r.db.QueryRow(
+		query,
+		res.BookInstanceID,
+		res.UserID,
+		res.ReservationStatusID,
+		res.StartDate,
+		res.EndDate,
+	).Scan(&id)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return id, nil
 }
 
 func (r *ReservationPostgresRepo) GetReservations() ([]*reservation.Reservation, int, error) {

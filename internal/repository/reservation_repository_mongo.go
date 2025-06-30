@@ -17,17 +17,17 @@ func NewMongoReservationRepository(db *mongo.Database) ReservationRepository {
 	return &mongoReservationRepository{collection: db.Collection("reservations")}
 }
 
-func (r *mongoReservationRepository) StoreReservation(res *reservation.Reservation) error {
+func (r *mongoReservationRepository) StoreReservation(res *reservation.Reservation) (int, error) {
 	if res.Id == 0 {
 		newID, err := r.getNextID()
 		if err != nil {
-			return err
+			return 0, err
 		}
 		res.SetID(newID)
 	}
 
 	_, err := r.collection.InsertOne(context.TODO(), res)
-	return err
+	return res.Id, err
 }
 
 func (r *mongoReservationRepository) GetReservations() ([]*reservation.Reservation, int, error) {

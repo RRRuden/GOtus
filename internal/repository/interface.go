@@ -26,7 +26,7 @@ type BookInstanceRepository interface {
 }
 
 type ReservationRepository interface {
-	StoreReservation(r *reservation.Reservation) error
+	StoreReservation(r *reservation.Reservation) (int, error)
 	GetReservations() ([]*reservation.Reservation, int, error)
 	UpdateReservationById(id int, updatedReservation *reservation.Reservation) (bool, error)
 	FindReservationById(id int) (*reservation.Reservation, bool, error)

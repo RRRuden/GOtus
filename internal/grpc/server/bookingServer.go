@@ -18,8 +18,8 @@ type bookingServer struct {
 }
 
 var (
-	grpcServer *grpc.Server
-	listener   net.Listener
+	bookingGrpcServer *grpc.Server
+	bookingListener   net.Listener
 )
 
 func NewBookingServer(s booking.Service) *bookingServer {
@@ -51,20 +51,20 @@ func (s *bookingServer) EndBooking(ctx context.Context, req *booking_api.EndBook
 
 func RunGRPCServer(service booking.Service, listenAddr string) error {
 	var err error
-	listener, err = net.Listen("tcp", listenAddr)
+	bookingListener, err = net.Listen("tcp", listenAddr)
 	if err != nil {
 		return err
 	}
-	grpcServer = grpc.NewServer()
-	booking_api.RegisterBookingServiceServer(grpcServer, NewBookingServer(service))
+	bookingGrpcServer = grpc.NewServer()
+	booking_api.RegisterBookingServiceServer(bookingGrpcServer, NewBookingServer(service))
 
 	log.Printf("gRPC сервер запущен на %s", listenAddr)
-	return grpcServer.Serve(listener)
+	return bookingGrpcServer.Serve(bookingListener)
 }
 
 func StopGRPCServer() {
-	if grpcServer != nil {
+	if bookingGrpcServer != nil {
 		log.Println("Остановка gRPC сервера...")
-		grpcServer.GracefulStop()
+		bookingGrpcServer.GracefulStop()
 	}
 }

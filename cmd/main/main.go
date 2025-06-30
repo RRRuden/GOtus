@@ -15,6 +15,8 @@ import (
 	"gotus/internal/logger"
 	"gotus/internal/repository"
 	"gotus/internal/service/booking"
+	emailsender "gotus/internal/service/email_sender"
+	emailtemplater "gotus/internal/service/email_templater"
 	"log"
 	"net/http"
 	"os"
@@ -37,7 +39,7 @@ func RunService() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	wg.Add(2)
+	wg.Add(3)
 
 	config := config.LoadConfig("././config/config.yaml")
 
@@ -60,10 +62,13 @@ func RunService() {
 	bookInstanceRepo := repository.NewBookInstancePostgresRepo(db)
 	reservationRepo := repository.NewReservationPostgresRepo(db)
 	userRepo := repository.NewUserPostgresRepo(db)
+	messageRepo := repository.NewEmailMessagePostgresRepo(db)
 	logger := logger.NewRedisLogger(config.Redis.Addr, config.Redis.Password, config.Redis.DB)
-	bookingSerivce := booking.NewBookingService(userRepo, bookRepo, bookInstanceRepo, reservationRepo, logger)
+	emailSender := emailsender.NewSMTPEmailSender(config.SMTP, messageRepo)
+	templater := emailtemplater.NewEmailTemplater(reservationRepo, bookInstanceRepo, bookRepo, config.TemplateDir)
+	bookingSerivce := booking.NewBookingService(userRepo, bookRepo, bookInstanceRepo, reservationRepo, logger, templater, emailSender)
 
-	grpcAddr := config.BookingServer.Host + ":" + config.BookingServer.Port
+	bookingServerAddr := config.BookingServer.Host + ":" + config.BookingServer.Port
 
 	go func() {
 		defer wg.Done()
@@ -75,7 +80,7 @@ func RunService() {
 	// HTTP-сервер
 	srv := &http.Server{
 		Addr:    config.HTTPServer.Host + ":" + config.HTTPServer.Port,
-		Handler: router.NewRouter(bookRepo, bookInstanceRepo, reservationRepo, userRepo, grpcAddr),
+		Handler: router.NewRouter(bookRepo, bookInstanceRepo, reservationRepo, userRepo, bookingServerAddr),
 	}
 
 	go func() {

@@ -14,16 +14,20 @@ import (
 )
 
 type BookingHandler struct {
-	grpcClient booking_api.BookingServiceClient
+	grpcBookingClient booking_api.BookingServiceClient
 }
 
 func NewBookingHandler(grpcAddr string) *BookingHandler {
-	conn, err := grpc.NewClient(grpcAddr, grpc.WithInsecure())
+	connBooking, err := grpc.NewClient(grpcAddr, grpc.WithInsecure())
 	if err != nil {
-		log.Fatalf("Не удалось подключиться к gRPC серверу: %v", err)
+		log.Fatalf("Не удалось подключиться к gRPC booking серверу: %v", err)
 	}
-	client := booking_api.NewBookingServiceClient(conn)
-	return &BookingHandler{grpcClient: client}
+
+	bookingClient := booking_api.NewBookingServiceClient(connBooking)
+
+	return &BookingHandler{
+		grpcBookingClient: bookingClient,
+	}
 }
 
 // CreateBookingRequest представляет JSON-запрос на бронирование книги.
@@ -63,7 +67,7 @@ func (h *BookingHandler) CreateBooking(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	resp, err := h.grpcClient.CreateBooking(ctx, &booking_api.CreateBookingRequest{
+	resp, err := h.grpcBookingClient.CreateBooking(ctx, &booking_api.CreateBookingRequest{
 		UserId: int32(req.UserID),
 		Isbn:   req.ISBN,
 	})
@@ -103,7 +107,7 @@ func (h *BookingHandler) ExtendBooking(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	_, err = h.grpcClient.ExtendBooking(ctx, &booking_api.ExtendBookingRequest{
+	_, err = h.grpcBookingClient.ExtendBooking(ctx, &booking_api.ExtendBookingRequest{
 		BookingId:     int32(reservationID),
 		ExtensionDays: int32(req.ExtensionDays),
 	})
@@ -136,7 +140,7 @@ func (h *BookingHandler) CancelBooking(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	_, err = h.grpcClient.CancelBooking(ctx, &booking_api.CancelBookingRequest{
+	_, err = h.grpcBookingClient.CancelBooking(ctx, &booking_api.CancelBookingRequest{
 		BookingId: int32(reservationID),
 	})
 	if err != nil {
@@ -168,7 +172,7 @@ func (h *BookingHandler) EndBooking(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	_, err = h.grpcClient.EndBooking(ctx, &booking_api.EndBookingRequest{
+	_, err = h.grpcBookingClient.EndBooking(ctx, &booking_api.EndBookingRequest{
 		BookingId: int32(reservationID),
 	})
 	if err != nil {

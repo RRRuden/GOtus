@@ -15,21 +15,23 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func newBookingServiceWithMocks(ctrl *gomock.Controller) (*booking.Service, *mocks.MockUserRepository, *mocks.MockBookRepository, *mocks.MockBookInstanceRepository, *mocks.MockReservationRepository, *mocks.MockLogger) {
+func newBookingServiceWithMocks(ctrl *gomock.Controller) (*booking.Service, *mocks.MockUserRepository, *mocks.MockBookRepository, *mocks.MockBookInstanceRepository, *mocks.MockReservationRepository, *mocks.MockLogger, *mocks.MockEmailSender, *mocks.MockEmailTemplater) {
 	userRepo := mocks.NewMockUserRepository(ctrl)
 	bookRepo := mocks.NewMockBookRepository(ctrl)
 	instanceRepo := mocks.NewMockBookInstanceRepository(ctrl)
 	resRepo := mocks.NewMockReservationRepository(ctrl)
 	logger := mocks.NewMockLogger(ctrl)
-	service := booking.NewBookingService(userRepo, bookRepo, instanceRepo, resRepo, logger)
+	templater := mocks.NewMockEmailTemplater(ctrl)
+	sender := mocks.NewMockEmailSender(ctrl)
+	service := booking.NewBookingService(userRepo, bookRepo, instanceRepo, resRepo, logger, templater, sender)
 	logger.EXPECT().Log(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
-	return &service, userRepo, bookRepo, instanceRepo, resRepo, logger
+	return &service, userRepo, bookRepo, instanceRepo, resRepo, logger, sender, templater
 }
 
 func TestCreateBooking_UserNotFound(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	svc, userRepo, _, _, _, _ := newBookingServiceWithMocks(ctrl)
+	svc, userRepo, _, _, _, _, _, _ := newBookingServiceWithMocks(ctrl)
 
 	userRepo.EXPECT().FindUserById(1).Return(nil, false, nil)
 	res, err := (*svc).CreateBooking(1, "978-0-00-000000-0")
@@ -40,7 +42,7 @@ func TestCreateBooking_UserNotFound(t *testing.T) {
 func TestCreateBooking_BookNotFound(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	svc, userRepo, bookRepo, _, _, _ := newBookingServiceWithMocks(ctrl)
+	svc, userRepo, bookRepo, _, _, _, _, _ := newBookingServiceWithMocks(ctrl)
 
 	userRepo.EXPECT().FindUserById(1).Return(&user.User{}, true, nil)
 	bookRepo.EXPECT().FindBookByISBN("isbn").Return(nil, false, nil)
@@ -53,7 +55,7 @@ func TestCreateBooking_BookNotFound(t *testing.T) {
 func TestCreateBooking_NoAvailableInstances(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	svc, userRepo, bookRepo, instanceRepo, resRepo, _ := newBookingServiceWithMocks(ctrl)
+	svc, userRepo, bookRepo, instanceRepo, resRepo, _, _, _ := newBookingServiceWithMocks(ctrl)
 
 	userRepo.EXPECT().FindUserById(1).Return(&user.User{}, true, nil)
 	bookRepo.EXPECT().FindBookByISBN("isbn").Return(&book.Book{}, true, nil)
@@ -71,7 +73,7 @@ func TestExtendBooking_InvalidStatus(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	svc, _, _, _, resRepo, _ := newBookingServiceWithMocks(ctrl)
+	svc, _, _, _, resRepo, _, _, _ := newBookingServiceWithMocks(ctrl)
 
 	tests := []struct {
 		name     string
@@ -120,7 +122,7 @@ func TestBookingService_ExtendBooking_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	svc, _, _, _, resRepo, _ := newBookingServiceWithMocks(ctrl)
+	svc, userRepo, _, _, resRepo, _, sender, templater := newBookingServiceWithMocks(ctrl)
 
 	now := time.Now()
 
@@ -144,6 +146,16 @@ func TestBookingService_ExtendBooking_Success(t *testing.T) {
 				resRepo.EXPECT().
 					UpdateReservationById(1, gomock.Any()).
 					Return(true, nil)
+
+				userRepo.EXPECT().FindUserById(1).Return(user.NewUser(1, "John", "John@mail.ru"), true, nil)
+
+				sender.EXPECT().
+					SendEmail(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(nil)
+
+				templater.EXPECT().
+					GetBookingExtendedEmail(1).
+					Return("template", nil)
 			},
 			wantOk:  true,
 			wantErr: nil,
@@ -161,6 +173,16 @@ func TestBookingService_ExtendBooking_Success(t *testing.T) {
 				resRepo.EXPECT().
 					UpdateReservationById(1, gomock.Any()).
 					Return(true, nil)
+
+				userRepo.EXPECT().FindUserById(1).Return(user.NewUser(1, "John", "John@mail.ru"), true, nil)
+
+				sender.EXPECT().
+					SendEmail(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(nil)
+
+				templater.EXPECT().
+					GetBookingExtendedEmail(1).
+					Return("template", nil)
 			},
 			wantOk:  true,
 			wantErr: nil,
@@ -182,7 +204,7 @@ func TestBookingService_ExtendBooking_Success(t *testing.T) {
 func TestCancelBooking_NotToday(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	svc, _, _, _, resRepo, _ := newBookingServiceWithMocks(ctrl)
+	svc, _, _, _, resRepo, _, _, _ := newBookingServiceWithMocks(ctrl)
 
 	res := reservation.NewReservation(1, 1, 1, int(reservation.StatusBooked), time.Now().AddDate(0, 0, -1), time.Now())
 	resRepo.EXPECT().FindReservationById(1).Return(res, true, nil)
@@ -195,7 +217,7 @@ func TestCancelBooking_NotToday(t *testing.T) {
 func TestEndBooking_Today(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	svc, _, _, _, resRepo, _ := newBookingServiceWithMocks(ctrl)
+	svc, _, _, _, resRepo, _, _, _ := newBookingServiceWithMocks(ctrl)
 
 	now := time.Now()
 	res := reservation.NewReservation(1, 1, 1, int(reservation.StatusBooked), now, now.AddDate(0, 0, 1))
@@ -210,7 +232,7 @@ func TestCreateBooking_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	service, mockUserRepo, mockBookRepo, mockInstanceRepo, mockReservationRepo, _ := newBookingServiceWithMocks(ctrl)
+	service, mockUserRepo, mockBookRepo, mockInstanceRepo, mockReservationRepo, _, sender, templater := newBookingServiceWithMocks(ctrl)
 
 	userID := 1
 	isbn := "978-1-56619-909-4"
@@ -222,7 +244,9 @@ func TestCreateBooking_Success(t *testing.T) {
 		book.NewBookInstance(bookInstanceID, isbn),
 	}, 1, nil)
 	mockReservationRepo.EXPECT().HasActiveReservation(bookInstanceID).Return(false, nil)
-	mockReservationRepo.EXPECT().StoreReservation(gomock.Any()).Return(nil)
+	mockReservationRepo.EXPECT().StoreReservation(gomock.Any()).Return(1, nil)
+	sender.EXPECT().SendEmail(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+	templater.EXPECT().GetBookingCreatedEmail(1).Return("template", nil)
 
 	res, err := (*service).CreateBooking(userID, isbn)
 	assert.NoError(t, err)
@@ -235,7 +259,7 @@ func TestExtendBooking_TooLong(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	service, _, _, _, _, _ := newBookingServiceWithMocks(ctrl)
+	service, _, _, _, _, _, _, _ := newBookingServiceWithMocks(ctrl)
 
 	success, err := (*service).ExtendBooking(1, 10)
 	assert.False(t, success)
@@ -246,7 +270,7 @@ func TestCancelBooking_InvalidDate(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	service, _, _, _, mockReservationRepo, _ := newBookingServiceWithMocks(ctrl)
+	service, _, _, _, mockReservationRepo, _, _, _ := newBookingServiceWithMocks(ctrl)
 
 	res := reservation.NewReservation(1, 1, 1, int(reservation.StatusBooked), time.Now().AddDate(0, 0, -1), time.Now().AddDate(0, 0, 6))
 	mockReservationRepo.EXPECT().FindReservationById(1).Return(res, true, nil)
@@ -260,7 +284,7 @@ func TestEndBooking_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	svc, _, _, _, mockReservationRepo, _ := newBookingServiceWithMocks(ctrl)
+	svc, userRepo, _, _, mockReservationRepo, _, sender, templater := newBookingServiceWithMocks(ctrl)
 
 	now := time.Now()
 
@@ -284,6 +308,18 @@ func TestEndBooking_Success(t *testing.T) {
 				mockReservationRepo.EXPECT().
 					UpdateReservationById(1, gomock.Any()).
 					Return(true, nil)
+
+				userRepo.EXPECT().
+					FindUserById(1).
+					Return(user.NewUser(1, "John", "John@mail.ru"), true, nil)
+
+				sender.EXPECT().
+					SendEmail(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(nil)
+
+				templater.EXPECT().
+					GetBookingEndedEmail(1).
+					Return("template", nil)
 			},
 			wantOk:  true,
 			wantErr: nil,
@@ -301,6 +337,18 @@ func TestEndBooking_Success(t *testing.T) {
 				mockReservationRepo.EXPECT().
 					UpdateReservationById(1, gomock.Any()).
 					Return(true, nil)
+
+				userRepo.EXPECT().
+					FindUserById(1).
+					Return(user.NewUser(1, "John", "John@mail.ru"), true, nil)
+
+				sender.EXPECT().
+					SendEmail(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(nil)
+
+				templater.EXPECT().
+					GetBookingEndedEmail(1).
+					Return("template", nil)
 			},
 			wantOk:  true,
 			wantErr: nil,
@@ -322,7 +370,7 @@ func TestEndBooking_Success(t *testing.T) {
 func TestCancelBooking_ReservationNotFound(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	svc, _, _, _, repo, _ := newBookingServiceWithMocks(ctrl)
+	svc, _, _, _, repo, _, _, _ := newBookingServiceWithMocks(ctrl)
 
 	repo.EXPECT().FindReservationById(1).Return(nil, false, nil)
 
@@ -334,11 +382,14 @@ func TestCancelBooking_ReservationNotFound(t *testing.T) {
 func TestCancelBooking__Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	service, _, _, _, mockReservationRepo, _ := newBookingServiceWithMocks(ctrl)
+	service, userRepo, _, _, mockReservationRepo, _, sender, templater := newBookingServiceWithMocks(ctrl)
 
 	res := reservation.NewReservation(1, 1, 1, int(reservation.StatusEnded), time.Now(), time.Now())
 	mockReservationRepo.EXPECT().FindReservationById(1).Return(res, true, nil)
 	mockReservationRepo.EXPECT().UpdateReservationById(1, gomock.Any()).Return(true, nil)
+	userRepo.EXPECT().FindUserById(1).Return(user.NewUser(1, "John", "John@mail.ru"), true, nil)
+	sender.EXPECT().SendEmail(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+	templater.EXPECT().GetBookingCanceledEmail(1).Return("template", nil)
 
 	success, err := (*service).CancelBooking(1)
 	assert.True(t, success)
@@ -349,7 +400,7 @@ func TestEndBooking__InvalidStatus(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	svc, _, _, _, mockReservationRepo, _ := newBookingServiceWithMocks(ctrl)
+	svc, _, _, _, mockReservationRepo, _, _, _ := newBookingServiceWithMocks(ctrl)
 
 	tests := []struct {
 		name     string

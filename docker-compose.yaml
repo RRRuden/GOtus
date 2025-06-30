@@ -26,6 +26,13 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "1025:1025" # SMTP порт
+      - "8025:8025" # Web UI
+    restart: unless-stopped
+
 volumes:
   mongo-data:
   redis-data:

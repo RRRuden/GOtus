@@ -75,7 +75,7 @@ func (h *ReservationHandler) CreateReservation(w http.ResponseWriter, r *http.Re
 	}
 
 	res := reservation.NewReservation(0, req.BookInstanceID, req.UserID, req.StatusID, start, end)
-	if err := h.Repo.StoreReservation(res); err != nil {
+	if _, err := h.Repo.StoreReservation(res); err != nil {
 		writeError(w, http.StatusInternalServerError, "Ошибка при сохранении брони")
 		return
 	}

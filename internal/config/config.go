@@ -37,14 +37,20 @@ type PostgresConfig struct {
 	SSLMode  string `yaml:"sslmode"`
 }
 
+type SMTPConfig struct {
+	Host string `yaml:"host"`
+	Port int    `yaml:"port"`
+	From string `yaml:"from"`
+}
 type Config struct {
 	Env           string              `yaml:"env"`
-	StoragePath   string              `yaml:"storage_path"`
+	TemplateDir   string              `yaml:"template_dir"`
 	HTTPServer    HTTPServerConfig    `yaml:"http_server"`
 	BookingServer BookingServerConfig `yaml:"booking_server"`
 	MongoDB       MongoDBConfig       `yaml:"mongodb"`
 	Redis         RedisConfig         `yaml:"redis"`
 	PostgreSQL    PostgresConfig      `yaml:"postgresql"`
+	SMTP          SMTPConfig          `yaml:"smtp"`
 }
 
 func LoadConfig(path string) *Config {
