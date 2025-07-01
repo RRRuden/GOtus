@@ -12,10 +12,45 @@ type HTTPServerConfig struct {
 	Port string `yaml:"port"`
 }
 
+type BookingServerConfig struct {
+	Host string `yaml:"host"`
+	Port string `yaml:"port"`
+}
+
+type MongoDBConfig struct {
+	URI      string `yaml:"uri"`
+	Database string `yaml:"database"`
+}
+
+type RedisConfig struct {
+	Addr     string `yaml:"addr"`
+	Password string `yaml:"password"`
+	DB       int    `yaml:"db"`
+}
+
+type PostgresConfig struct {
+	Host     string `yaml:"host"`
+	Port     int    `yaml:"port"`
+	User     string `yaml:"user"`
+	Password string `yaml:"password"`
+	DBName   string `yaml:"dbname"`
+	SSLMode  string `yaml:"sslmode"`
+}
+
+type SMTPConfig struct {
+	Host string `yaml:"host"`
+	Port int    `yaml:"port"`
+	From string `yaml:"from"`
+}
 type Config struct {
-	Env         string           `yaml:"env"`
-	StoragePath string           `yaml:"storage_path"`
-	HTTPServer  HTTPServerConfig `yaml:"http_server"`
+	Env           string              `yaml:"env"`
+	TemplateDir   string              `yaml:"template_dir"`
+	HTTPServer    HTTPServerConfig    `yaml:"http_server"`
+	BookingServer BookingServerConfig `yaml:"booking_server"`
+	MongoDB       MongoDBConfig       `yaml:"mongodb"`
+	Redis         RedisConfig         `yaml:"redis"`
+	PostgreSQL    PostgresConfig      `yaml:"postgresql"`
+	SMTP          SMTPConfig          `yaml:"smtp"`
 }
 
 func LoadConfig(path string) *Config {

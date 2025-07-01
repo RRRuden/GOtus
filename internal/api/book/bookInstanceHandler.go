@@ -10,11 +10,10 @@ import (
 )
 
 type BookInstanceHandler struct {
-	Repo *repository.BookInstanceRepository
+	Repo repository.BookInstanceRepository
 }
 
 type CreateBookInstanceRequest struct {
-	ID   int    `json:"id"`
 	ISBN string `json:"isbn"`
 }
 
@@ -31,18 +30,23 @@ type UpdateBookInstanceRequest struct {
 // @Produce      json
 // @Param        instance body CreateBookInstanceRequest true "Экземпляр книги"
 // @Success      201
-// @Failure      400 {string} string "invalid request"
+// @Failure      400 {object} ErrorResponse
+// @Failure      500 {object} ErrorResponse
 // @Router       /api/bookinstance [post]
 func (h *BookInstanceHandler) CreateBookInstance(w http.ResponseWriter, r *http.Request) {
 	var req CreateBookInstanceRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Неверный формат запроса")
 		return
 	}
 
-	res := book.NewBookInstance(req.ID, req.ISBN)
-	h.Repo.StoreBookInstance(res)
+	res := book.NewBookInstance(0, req.ISBN)
+	if err := h.Repo.StoreBookInstance(res); err != nil {
+		writeError(w, http.StatusInternalServerError, "Ошибка при создании экземпляра книги")
+		return
+	}
+
 	w.WriteHeader(http.StatusCreated)
 }
 
@@ -52,17 +56,22 @@ func (h *BookInstanceHandler) CreateBookInstance(w http.ResponseWriter, r *http.
 // @Tags         bookinstance
 // @Produce      json
 // @Success      200 {array} book.BookInstance
+// @Failure      500 {object} ErrorResponse
 // @Router       /api/bookinstances [get]
 func (h *BookInstanceHandler) GetAllBookInstances(w http.ResponseWriter, r *http.Request) {
-	res, _ := h.Repo.GetBookInstances()
-	json.NewEncoder(w).Encode(res)
+	res, _, err := h.Repo.GetBookInstances()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Ошибка при получении экземпляров книг")
+		return
+	}
+	writeJSON(w, res)
 }
 
 func (h *BookInstanceHandler) BookInstanceByIDHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := strings.TrimPrefix(r.URL.Path, "/api/bookinstance/")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "invalid reservation id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Некорректный ID")
 		return
 	}
 
@@ -74,7 +83,7 @@ func (h *BookInstanceHandler) BookInstanceByIDHandler(w http.ResponseWriter, r *
 	case http.MethodDelete:
 		h.DeleteBookInstance(w, r, id)
 	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 	}
 }
 
@@ -85,15 +94,20 @@ func (h *BookInstanceHandler) BookInstanceByIDHandler(w http.ResponseWriter, r *
 // @Produce      json
 // @Param        id path int true "ID экземпляра книги"
 // @Success      200 {object} book.BookInstance
-// @Failure      404 {string} string "not found"
+// @Failure      404 {object} ErrorResponse
+// @Failure      500 {object} ErrorResponse
 // @Router       /api/bookinstance/{id} [get]
 func (h *BookInstanceHandler) GetBookInstanceByID(w http.ResponseWriter, r *http.Request, id int) {
-	res, ok := h.Repo.FindBookInstanceById(id)
-	if !ok {
-		http.NotFound(w, r)
+	res, _, err := h.Repo.FindBookInstanceById(id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Ошибка при поиске экземпляра книги")
 		return
 	}
-	json.NewEncoder(w).Encode(res)
+	if res == nil {
+		writeError(w, http.StatusNotFound, "Экземпляр книги не найден")
+		return
+	}
+	writeJSON(w, res)
 }
 
 // UpdateBookInstance godoc
@@ -105,20 +119,26 @@ func (h *BookInstanceHandler) GetBookInstanceByID(w http.ResponseWriter, r *http
 // @Param        id path int true "ID экземпляра книги"
 // @Param        instance body UpdateBookInstanceRequest true "Новые данные экземпляра"
 // @Success      200
-// @Failure      400 {string} string "invalid request"
-// @Failure      404 {string} string "not found"
+// @Failure      400 {object} ErrorResponse
+// @Failure      404 {object} ErrorResponse
+// @Failure      500 {object} ErrorResponse
 // @Router       /api/bookinstance/{id} [put]
 func (h *BookInstanceHandler) UpdateBookInstance(w http.ResponseWriter, r *http.Request, id int) {
 	var req UpdateBookInstanceRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Неверный формат запроса")
 		return
 	}
 
 	res := book.NewBookInstance(id, req.ISBN)
-	if !h.Repo.UpdateBookInstanceById(id, res) {
-		http.NotFound(w, r)
+	ok, err := h.Repo.UpdateBookInstanceById(id, res)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Ошибка при обновлении экземпляра книги")
+		return
+	}
+	if !ok {
+		writeError(w, http.StatusNotFound, "Экземпляр книги не найден")
 		return
 	}
 	w.WriteHeader(http.StatusOK)
@@ -130,11 +150,17 @@ func (h *BookInstanceHandler) UpdateBookInstance(w http.ResponseWriter, r *http.
 // @Tags         bookinstance
 // @Param        id path int true "ID экземпляра книги"
 // @Success      200
-// @Failure      404 {string} string "not found"
+// @Failure      404 {object} ErrorResponse
+// @Failure      500 {object} ErrorResponse
 // @Router       /api/bookinstance/{id} [delete]
 func (h *BookInstanceHandler) DeleteBookInstance(w http.ResponseWriter, r *http.Request, id int) {
-	if !h.Repo.DeleteBookInstanceById(id) {
-		http.NotFound(w, r)
+	ok, err := h.Repo.DeleteBookInstanceById(id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Ошибка при удалении экземпляра книги")
+		return
+	}
+	if !ok {
+		writeError(w, http.StatusNotFound, "Экземпляр книги не найден")
 		return
 	}
 	w.WriteHeader(http.StatusOK)

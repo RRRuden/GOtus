@@ -1,15 +1,33 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
-	"gotus/internal/service"
+	"gotus/internal/grpc/api/booking_api"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
+
+	"google.golang.org/grpc"
 )
 
 type BookingHandler struct {
-	Service *service.BookingService
+	grpcBookingClient booking_api.BookingServiceClient
+}
+
+func NewBookingHandler(grpcAddr string) *BookingHandler {
+	connBooking, err := grpc.NewClient(grpcAddr, grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("Не удалось подключиться к gRPC booking серверу: %v", err)
+	}
+
+	bookingClient := booking_api.NewBookingServiceClient(connBooking)
+
+	return &BookingHandler{
+		grpcBookingClient: bookingClient,
+	}
 }
 
 // CreateBookingRequest представляет JSON-запрос на бронирование книги.
@@ -23,6 +41,11 @@ type ExtendBookingRequest struct {
 	ExtensionDays int `json:"extension_days"`
 }
 
+// CreateBookingResponse представляет JSON-ответ с ID созданного бронирования.
+type CreateBookingResponse struct {
+	BookingID int32 `json:"booking_id"`
+}
+
 // CreateBooking godoc
 // @Summary Создать бронирование книги
 // @Description Бронирует доступный экземпляр книги по ISBN для указанного пользователя
@@ -30,8 +53,9 @@ type ExtendBookingRequest struct {
 // @Accept json
 // @Produce json
 // @Param request body CreateBookingRequest true "Данные для бронирования"
-// @Success 201 {string} string "Бронирование успешно создано"
+// @Success 201 {object} CreateBookingResponse "Бронирование успешно создано"
 // @Failure 400 {string} string "Неверный запрос"
+// @Failure 500 {string} string "Ошибка сервера"
 // @Router /api/booking/create [post]
 func (h *BookingHandler) CreateBooking(w http.ResponseWriter, r *http.Request) {
 	var req CreateBookingRequest
@@ -40,13 +64,19 @@ func (h *BookingHandler) CreateBooking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.Service.CreateBooking(req.UserID, req.ISBN)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	resp, err := h.grpcBookingClient.CreateBooking(ctx, &booking_api.CreateBookingRequest{
+		UserId: int32(req.UserID),
+		Isbn:   req.ISBN,
+	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "Ошибка gRPC: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(CreateBookingResponse{BookingID: resp.BookingId})
 }
 
 // ExtendBooking godoc
@@ -74,13 +104,20 @@ func (h *BookingHandler) ExtendBooking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.Service.ExtendBooking(reservationID, req.ExtensionDays)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	_, err = h.grpcBookingClient.ExtendBooking(ctx, &booking_api.ExtendBookingRequest{
+		BookingId:     int32(reservationID),
+		ExtensionDays: int32(req.ExtensionDays),
+	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "gRPC error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Бронирование продлено"))
 }
 
 // CancelBooking godoc
@@ -100,13 +137,19 @@ func (h *BookingHandler) CancelBooking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.Service.CancelBooking(reservationID)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	_, err = h.grpcBookingClient.CancelBooking(ctx, &booking_api.CancelBookingRequest{
+		BookingId: int32(reservationID),
+	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "gRPC error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Бронирование отменено"))
 }
 
 // EndBooking godoc
@@ -126,11 +169,17 @@ func (h *BookingHandler) EndBooking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.Service.EndBooking(reservationID)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	_, err = h.grpcBookingClient.EndBooking(ctx, &booking_api.EndBookingRequest{
+		BookingId: int32(reservationID),
+	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "gRPC error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Бронирование завершено"))
 }

@@ -7,10 +7,10 @@ import (
 )
 
 type Book struct {
-	isbn   string
-	Title  string
-	Author string
-	Year   int
+	Isbn   string `json:"Isbn" bson:"isbn"`
+	Title  string `json:"Title" bson:"title"`
+	Author string `json:"Author" bson:"author"`
+	Year   int    `json:"Year" bson:"year"`
 }
 
 func NewBook(isbn, title string, author string, year int) (*Book, error) {
@@ -29,12 +29,12 @@ func (b *Book) setISBN(isbn string) error {
 	if !isValidISBN(isbn) {
 		return errors.New("некорректный ISBN")
 	}
-	b.isbn = isbn
+	b.Isbn = isbn
 	return nil
 }
 
 func (b *Book) GetISBN() string {
-	return b.isbn
+	return b.Isbn
 }
 
 func isValidISBN(isbn string) bool {

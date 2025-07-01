@@ -7,22 +7,19 @@ import (
 	r_handler "gotus/internal/api/reservation"
 	u_handler "gotus/internal/api/user"
 	"gotus/internal/repository"
-	"gotus/internal/service"
 	"net/http"
 
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
-func NewRouter(bookRepo *repository.BookRepository, bookInstanceRepo *repository.BookInstanceRepository, resRepo *repository.ReservationRepository, userRepo *repository.UserRepository) http.Handler {
+func NewRouter(bookRepo repository.BookRepository, bookInstanceRepo repository.BookInstanceRepository, resRepo repository.ReservationRepository, userRepo repository.UserRepository, grpcAddr string) http.Handler {
 	mux := http.NewServeMux()
-
-	bookingService := service.NewBookingService(userRepo, bookRepo, bookInstanceRepo, resRepo)
 
 	bookHandler := &b_handler.BookHandler{Repo: bookRepo}
 	bookInstanceHandler := &b_handler.BookInstanceHandler{Repo: bookInstanceRepo}
 	resHandler := &r_handler.ReservationHandler{Repo: resRepo}
 	userHandler := &u_handler.UserHandler{Repo: userRepo}
-	bookingHandler := &booking_handler.BookingHandler{Service: bookingService}
+	bookingHandler := booking_handler.NewBookingHandler(grpcAddr)
 
 	// Book Routes
 	mux.HandleFunc("/api/book", method(bookHandler.CreateBook, "POST"))

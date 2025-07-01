@@ -1,5 +1,31 @@
 env: "prod"
-storage_path: "./data"
+template_dir: "./templates/email"
 http_server:
   host: "0.0.0.0"
   port: "8989"
+
+smtp:
+  host: "localhost"
+  port: 1025
+  from: "noreply@gotus.com"  
+
+booking_server:
+  host: "0.0.0.0"
+  port: "50051"
+
+mongodb:
+  uri: "mongodb://localhost:27017"
+  database: "gotus"
+
+redis:
+  addr: "localhost:6381"
+  password: ""
+  db: 0
+
+postgresql:
+  host: "localhost"
+  port: 5432
+  user: "myuser"
+  password: "mypassword"
+  dbname: "mydb"
+  sslmode: "disable"

@@ -11,11 +11,10 @@ import (
 )
 
 type ReservationHandler struct {
-	Repo *repository.ReservationRepository
+	Repo repository.ReservationRepository
 }
 
 type CreateReservationRequest struct {
-	ID             int    `json:"id"`
 	BookInstanceID int    `json:"book_instance_id"`
 	UserID         int    `json:"user_id"`
 	StatusID       int    `json:"status_id"`
@@ -31,6 +30,20 @@ type UpdateReservationRequest struct {
 	EndDate        string `json:"end_date"`
 }
 
+type ErrorResponse struct {
+	Message string `json:"message"`
+}
+
+func writeError(w http.ResponseWriter, status int, msg string) {
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(ErrorResponse{Message: msg})
+}
+
+func writeJSON(w http.ResponseWriter, data any) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(data)
+}
+
 // CreateReservation godoc
 // @Summary      Создать новую бронь
 // @Description  Добавляет новую запись бронирования книги
@@ -39,21 +52,33 @@ type UpdateReservationRequest struct {
 // @Produce      json
 // @Param        reservation body CreateReservationRequest true "Данные брони"
 // @Success      201
-// @Failure      400 {string} string "invalid request"
+// @Failure      400 {object} ErrorResponse
+// @Failure      500 {object} ErrorResponse
 // @Router       /api/reservation [post]
 func (h *ReservationHandler) CreateReservation(w http.ResponseWriter, r *http.Request) {
 	var req CreateReservationRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Неверный формат запроса")
 		return
 	}
 
-	start, _ := time.Parse("2006-01-02", req.StartDate)
-	end, _ := time.Parse("2006-01-02", req.EndDate)
+	start, err := time.Parse("2006-01-02", req.StartDate)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "Неверная дата начала")
+		return
+	}
+	end, err := time.Parse("2006-01-02", req.EndDate)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "Неверная дата окончания")
+		return
+	}
 
-	res := reservation.NewReservation(req.ID, req.BookInstanceID, req.UserID, req.StatusID, start, end)
-	h.Repo.StoreReservation(res)
+	res := reservation.NewReservation(0, req.BookInstanceID, req.UserID, req.StatusID, start, end)
+	if _, err := h.Repo.StoreReservation(res); err != nil {
+		writeError(w, http.StatusInternalServerError, "Ошибка при сохранении брони")
+		return
+	}
 	w.WriteHeader(http.StatusCreated)
 }
 
@@ -63,17 +88,22 @@ func (h *ReservationHandler) CreateReservation(w http.ResponseWriter, r *http.Re
 // @Tags         reservation
 // @Produce      json
 // @Success      200 {array} reservation.Reservation
+// @Failure      500 {object} ErrorResponse
 // @Router       /api/reservations [get]
 func (h *ReservationHandler) GetAllReservations(w http.ResponseWriter, r *http.Request) {
-	res, _ := h.Repo.GetReservations()
-	json.NewEncoder(w).Encode(res)
+	res, _, err := h.Repo.GetReservations()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Ошибка при получении данных")
+		return
+	}
+	writeJSON(w, res)
 }
 
 func (h *ReservationHandler) ReservationByIDHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := strings.TrimPrefix(r.URL.Path, "/api/reservation/")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "invalid reservation id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Некорректный ID")
 		return
 	}
 
@@ -85,7 +115,7 @@ func (h *ReservationHandler) ReservationByIDHandler(w http.ResponseWriter, r *ht
 	case http.MethodDelete:
 		h.DeleteReservation(w, r, id)
 	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 	}
 }
 
@@ -96,15 +126,20 @@ func (h *ReservationHandler) ReservationByIDHandler(w http.ResponseWriter, r *ht
 // @Produce      json
 // @Param        id path int true "ID бронирования"
 // @Success      200 {object} reservation.Reservation
-// @Failure      404 {string} string "not found"
+// @Failure      404 {object} ErrorResponse
+// @Failure      500 {object} ErrorResponse
 // @Router       /api/reservation/{id} [get]
 func (h *ReservationHandler) GetReservationByID(w http.ResponseWriter, r *http.Request, id int) {
-	res, ok := h.Repo.FindReservationById(id)
-	if !ok {
-		http.NotFound(w, r)
+	res, _, err := h.Repo.FindReservationById(id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Ошибка при получении брони")
 		return
 	}
-	json.NewEncoder(w).Encode(res)
+	if res == nil {
+		writeError(w, http.StatusNotFound, "Бронь не найдена")
+		return
+	}
+	writeJSON(w, res)
 }
 
 // UpdateReservation godoc
@@ -116,23 +151,37 @@ func (h *ReservationHandler) GetReservationByID(w http.ResponseWriter, r *http.R
 // @Param        id path int true "ID бронирования"
 // @Param        reservation body UpdateReservationRequest true "Обновлённые данные брони"
 // @Success      200
-// @Failure      400 {string} string "invalid request"
-// @Failure      404 {string} string "not found"
+// @Failure      400 {object} ErrorResponse
+// @Failure      404 {object} ErrorResponse
+// @Failure      500 {object} ErrorResponse
 // @Router       /api/reservation/{id} [put]
 func (h *ReservationHandler) UpdateReservation(w http.ResponseWriter, r *http.Request, id int) {
 	var req UpdateReservationRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Неверный формат запроса")
 		return
 	}
 
-	start, _ := time.Parse("2006-01-02", req.StartDate)
-	end, _ := time.Parse("2006-01-02", req.EndDate)
+	start, err := time.Parse("2006-01-02", req.StartDate)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "Неверная дата начала")
+		return
+	}
+	end, err := time.Parse("2006-01-02", req.EndDate)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "Неверная дата окончания")
+		return
+	}
 
 	res := reservation.NewReservation(id, req.BookInstanceID, req.UserID, req.StatusID, start, end)
-	if !h.Repo.UpdateReservationById(id, res) {
-		http.NotFound(w, r)
+	ok, err := h.Repo.UpdateReservationById(id, res)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Ошибка при обновлении брони")
+		return
+	}
+	if !ok {
+		writeError(w, http.StatusNotFound, "Бронь не найдена")
 		return
 	}
 	w.WriteHeader(http.StatusOK)
@@ -144,11 +193,17 @@ func (h *ReservationHandler) UpdateReservation(w http.ResponseWriter, r *http.Re
 // @Tags         reservation
 // @Param        id path int true "ID бронирования"
 // @Success      200
-// @Failure      404 {string} string "not found"
+// @Failure      404 {object} ErrorResponse
+// @Failure      500 {object} ErrorResponse
 // @Router       /api/reservation/{id} [delete]
 func (h *ReservationHandler) DeleteReservation(w http.ResponseWriter, r *http.Request, id int) {
-	if !h.Repo.DeleteReservationById(id) {
-		http.NotFound(w, r)
+	ok, err := h.Repo.DeleteReservationById(id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Ошибка при удалении брони")
+		return
+	}
+	if !ok {
+		writeError(w, http.StatusNotFound, "Бронь не найдена")
 		return
 	}
 	w.WriteHeader(http.StatusOK)

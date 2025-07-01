@@ -1,42 +1,48 @@
 definitions:
   gotus_internal_model_book.Book:
     properties:
-      author:
+      Author:
         type: string
-      title:
+      Isbn:
         type: string
-      year:
+      Title:
+        type: string
+      Year:
         type: integer
     type: object
   gotus_internal_model_book.BookInstance:
     properties:
-      isbn:
+      ISBN:
         type: string
+      Id:
+        type: integer
     type: object
   gotus_internal_model_reservation.Reservation:
     properties:
-      bookInstanceID:
+      BookInstanceID:
         type: integer
-      endDate:
+      EndDate:
         type: string
-      reservationStatusID:
+      Id:
         type: integer
-      startDate:
+      ReservationStatusID:
+        type: integer
+      StartDate:
         type: string
-      userID:
+      UserID:
         type: integer
     type: object
   gotus_internal_model_user.User:
     properties:
-      email:
+      Email:
         type: string
-      name:
+      Id:
+        type: integer
+      Name:
         type: string
     type: object
   internal_api_book.CreateBookInstanceRequest:
     properties:
-      id:
-        type: integer
       isbn:
         type: string
     type: object
@@ -50,6 +56,11 @@ definitions:
         type: string
       year:
         type: integer
+    type: object
+  internal_api_book.ErrorResponse:
+    properties:
+      message:
+        type: string
     type: object
   internal_api_book.UpdateBookInstanceRequest:
     properties:
@@ -74,6 +85,11 @@ definitions:
       user_id:
         type: integer
     type: object
+  internal_api_booking.CreateBookingResponse:
+    properties:
+      booking_id:
+        type: integer
+    type: object
   internal_api_booking.ExtendBookingRequest:
     properties:
       extension_days:
@@ -85,14 +101,17 @@ definitions:
         type: integer
       end_date:
         type: string
-      id:
-        type: integer
       start_date:
         type: string
       status_id:
         type: integer
       user_id:
         type: integer
+    type: object
+  internal_api_reservation.ErrorResponse:
+    properties:
+      message:
+        type: string
     type: object
   internal_api_reservation.UpdateReservationRequest:
     properties:
@@ -111,9 +130,12 @@ definitions:
     properties:
       email:
         type: string
-      id:
-        type: integer
       name:
+        type: string
+    type: object
+  internal_api_user.ErrorResponse:
+    properties:
+      message:
         type: string
     type: object
   internal_api_user.UpdateUserRequest:
@@ -149,9 +171,13 @@ paths:
         "201":
           description: Created
         "400":
-          description: invalid request
+          description: Bad Request
           schema:
-            type: string
+            $ref: '#/definitions/internal_api_book.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_api_book.ErrorResponse'
       summary: Добавить новую книгу
       tags:
       - book
@@ -168,9 +194,13 @@ paths:
         "200":
           description: OK
         "404":
-          description: not found
+          description: Not Found
           schema:
-            type: string
+            $ref: '#/definitions/internal_api_book.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_api_book.ErrorResponse'
       summary: Удалить книгу по ISBN
       tags:
       - book
@@ -190,9 +220,13 @@ paths:
           schema:
             $ref: '#/definitions/gotus_internal_model_book.Book'
         "404":
-          description: not found
+          description: Not Found
           schema:
-            type: string
+            $ref: '#/definitions/internal_api_book.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_api_book.ErrorResponse'
       summary: Получить книгу по ISBN
       tags:
       - book
@@ -216,13 +250,17 @@ paths:
         "200":
           description: OK
         "400":
-          description: invalid request
+          description: Bad Request
           schema:
-            type: string
+            $ref: '#/definitions/internal_api_book.ErrorResponse'
         "404":
-          description: not found
+          description: Not Found
           schema:
-            type: string
+            $ref: '#/definitions/internal_api_book.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_api_book.ErrorResponse'
       summary: Обновить книгу по ISBN
       tags:
       - book
@@ -267,9 +305,13 @@ paths:
         "201":
           description: Бронирование успешно создано
           schema:
-            type: string
+            $ref: '#/definitions/internal_api_booking.CreateBookingResponse'
         "400":
           description: Неверный запрос
+          schema:
+            type: string
+        "500":
+          description: Ошибка сервера
           schema:
             type: string
       summary: Создать бронирование книги
@@ -347,9 +389,13 @@ paths:
         "201":
           description: Created
         "400":
-          description: invalid request
+          description: Bad Request
           schema:
-            type: string
+            $ref: '#/definitions/internal_api_book.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_api_book.ErrorResponse'
       summary: Создать экземпляр книги
       tags:
       - bookinstance
@@ -366,9 +412,13 @@ paths:
         "200":
           description: OK
         "404":
-          description: not found
+          description: Not Found
           schema:
-            type: string
+            $ref: '#/definitions/internal_api_book.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_api_book.ErrorResponse'
       summary: Удалить экземпляр книги
       tags:
       - bookinstance
@@ -388,9 +438,13 @@ paths:
           schema:
             $ref: '#/definitions/gotus_internal_model_book.BookInstance'
         "404":
-          description: not found
+          description: Not Found
           schema:
-            type: string
+            $ref: '#/definitions/internal_api_book.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_api_book.ErrorResponse'
       summary: Получить экземпляр книги по ID
       tags:
       - bookinstance
@@ -416,13 +470,17 @@ paths:
         "200":
           description: OK
         "400":
-          description: invalid request
+          description: Bad Request
           schema:
-            type: string
+            $ref: '#/definitions/internal_api_book.ErrorResponse'
         "404":
-          description: not found
+          description: Not Found
           schema:
-            type: string
+            $ref: '#/definitions/internal_api_book.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_api_book.ErrorResponse'
       summary: Обновить экземпляр книги
       tags:
       - bookinstance
@@ -438,6 +496,10 @@ paths:
             items:
               $ref: '#/definitions/gotus_internal_model_book.BookInstance'
             type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_api_book.ErrorResponse'
       summary: Получить все экземпляры книг
       tags:
       - bookinstance
@@ -453,6 +515,10 @@ paths:
             items:
               $ref: '#/definitions/gotus_internal_model_book.Book'
             type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_api_book.ErrorResponse'
       summary: Получить список всех книг
       tags:
       - book
@@ -474,9 +540,13 @@ paths:
         "201":
           description: Created
         "400":
-          description: invalid request
+          description: Bad Request
           schema:
-            type: string
+            $ref: '#/definitions/internal_api_reservation.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_api_reservation.ErrorResponse'
       summary: Создать новую бронь
       tags:
       - reservation
@@ -493,9 +563,13 @@ paths:
         "200":
           description: OK
         "404":
-          description: not found
+          description: Not Found
           schema:
-            type: string
+            $ref: '#/definitions/internal_api_reservation.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_api_reservation.ErrorResponse'
       summary: Удалить бронь по ID
       tags:
       - reservation
@@ -515,9 +589,13 @@ paths:
           schema:
             $ref: '#/definitions/gotus_internal_model_reservation.Reservation'
         "404":
-          description: not found
+          description: Not Found
           schema:
-            type: string
+            $ref: '#/definitions/internal_api_reservation.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_api_reservation.ErrorResponse'
       summary: Получить бронь по ID
       tags:
       - reservation
@@ -543,13 +621,17 @@ paths:
         "200":
           description: OK
         "400":
-          description: invalid request
+          description: Bad Request
           schema:
-            type: string
+            $ref: '#/definitions/internal_api_reservation.ErrorResponse'
         "404":
-          description: not found
+          description: Not Found
           schema:
-            type: string
+            $ref: '#/definitions/internal_api_reservation.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_api_reservation.ErrorResponse'
       summary: Обновить бронь по ID
       tags:
       - reservation
@@ -565,6 +647,10 @@ paths:
             items:
               $ref: '#/definitions/gotus_internal_model_reservation.Reservation'
             type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_api_reservation.ErrorResponse'
       summary: Получить список всех броней
       tags:
       - reservation
@@ -586,9 +672,13 @@ paths:
         "201":
           description: Created
         "400":
-          description: invalid request
+          description: Bad Request
           schema:
-            type: string
+            $ref: '#/definitions/internal_api_user.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_api_user.ErrorResponse'
       summary: Создать пользователя
       tags:
       - user
@@ -605,9 +695,13 @@ paths:
         "200":
           description: OK
         "404":
-          description: not found
+          description: Not Found
           schema:
-            type: string
+            $ref: '#/definitions/internal_api_user.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_api_user.ErrorResponse'
       summary: Удалить пользователя
       tags:
       - user
@@ -626,10 +720,18 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/gotus_internal_model_user.User'
-        "404":
-          description: not found
+        "400":
+          description: Bad Request
           schema:
-            type: string
+            $ref: '#/definitions/internal_api_user.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_api_user.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_api_user.ErrorResponse'
       summary: Получить пользователя по ID
       tags:
       - user
@@ -655,13 +757,17 @@ paths:
         "200":
           description: OK
         "400":
-          description: invalid request
+          description: Bad Request
           schema:
-            type: string
+            $ref: '#/definitions/internal_api_user.ErrorResponse'
         "404":
-          description: not found
+          description: Not Found
           schema:
-            type: string
+            $ref: '#/definitions/internal_api_user.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_api_user.ErrorResponse'
       summary: Обновить пользователя
       tags:
       - user
@@ -677,6 +783,10 @@ paths:
             items:
               $ref: '#/definitions/gotus_internal_model_user.User'
             type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_api_user.ErrorResponse'
       summary: Получить всех пользователей
       tags:
       - user
